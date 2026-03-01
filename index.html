@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Roadmap de sprints para squads — planejamento visual de épicos e projetos por sprint.">
+    <title>Roadmap Planner</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+    <div class="app-layout">
+
+        <!-- ─── Header ─── -->
+        <header class="app-header">
+            <div class="app-header-left">
+                <h1 id="roadmap-title" class="roadmap-title">ROADMAP Q1/2026</h1>
+                <span id="roadmap-subtitle" class="roadmap-subtitle">Squad Ativação</span>
+            </div>
+            <div id="roadmap-legend" class="roadmap-legend"></div>
+        </header>
+
+        <!-- ─── Body ─── -->
+        <div class="app-body">
+
+            <!-- Roadmap Area -->
+            <div class="roadmap-wrapper">
+                <div id="roadmap-container" class="roadmap-container"></div>
+            </div>
+
+            <!-- Panel Toggle -->
+            <button class="panel-toggle" id="btn-toggle-panel" title="Abrir/Fechar painel">◀</button>
+
+            <!-- Side Panel -->
+            <aside class="side-panel" id="side-panel">
+                <div class="panel-tabs">
+                    <button class="panel-tab active" data-target="section-config">Config</button>
+                    <button class="panel-tab" data-target="section-items">Itens</button>
+                    <button class="panel-tab" data-target="section-import">Import/Export</button>
+                </div>
+
+                <div class="panel-content">
+
+                    <!-- ─── Config Section ─── -->
+                    <div id="section-config" class="panel-section active">
+                        <div class="config-section-title">Configuração do Roadmap</div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cfg-periodo">Período</label>
+                                <input type="text" id="cfg-periodo" placeholder="Q1/2026">
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-squad">Squad</label>
+                                <input type="text" id="cfg-squad" placeholder="Squad Ativação">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cfg-dataInicio">Data Início</label>
+                                <input type="date" id="cfg-dataInicio">
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-dataFim">Data Fim</label>
+                                <input type="date" id="cfg-dataFim">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cfg-diasSprint">Dias/Sprint</label>
+                                <input type="number" id="cfg-diasSprint" min="1" max="90" value="14">
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-sprintStartNumber">Sprint Inicial N°</label>
+                                <input type="number" id="cfg-sprintStartNumber" min="1" value="115">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfg-bgColor">Cor de Fundo do Roadmap</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <input type="color" id="cfg-bgColor" value="#0f172a"
+                                    style="width:40px; height:32px; padding:2px; cursor:pointer;">
+                                <input type="text" id="cfg-bgColorText" value="#0f172a" style="flex:1;"
+                                    placeholder="#0f172a">
+                            </div>
+                        </div>
+
+                        <div class="btn-group">
+                            <button class="btn btn-primary btn-block" id="btn-apply-config">Aplicar
+                                Configuração</button>
+                        </div>
+                    </div>
+
+                    <!-- ─── Items Section ─── -->
+                    <div id="section-items" class="panel-section">
+                        <div
+                            style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                            <div class="config-section-title" style="margin-bottom:0; border:none; padding:0;">Itens do
+                                Roadmap</div>
+                            <button class="btn btn-primary btn-sm" id="btn-add-item">+ Novo Item</button>
+                        </div>
+
+                        <div id="item-list" class="item-list"></div>
+
+                        <div class="editor-divider"></div>
+
+                        <div id="item-form">
+                            <div class="no-items-msg">Selecione um item para editar</div>
+                        </div>
+                    </div>
+
+                    <!-- ─── Import/Export Section ─── -->
+                    <div id="section-import" class="panel-section">
+
+                        <!-- JSON -->
+                        <div class="import-card">
+                            <div class="import-card-title">JSON</div>
+                            <div class="import-card-desc">Exporte ou importe o roadmap completo em formato JSON.</div>
+                            <div class="btn-group" style="margin-top:0;">
+                                <button class="btn btn-primary btn-sm" id="btn-export-json">Exportar JSON</button>
+                                <button class="btn btn-secondary btn-sm" id="btn-import-json">Importar JSON</button>
+                                <input type="file" id="file-json" accept=".json" style="display:none">
+                            </div>
+                        </div>
+
+                        <!-- File System API -->
+                        <div class="import-card">
+                            <div class="import-card-title">Salvar / Abrir Arquivo</div>
+                            <div class="import-card-desc">Use a API do navegador para salvar/abrir arquivos diretamente.
+                            </div>
+                            <div class="btn-group" style="margin-top:0;">
+                                <button class="btn btn-primary btn-sm" id="btn-save-fs">Salvar no Disco</button>
+                                <button class="btn btn-secondary btn-sm" id="btn-load-fs">Abrir do Disco</button>
+                            </div>
+                            <div class="editor-divider"></div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="cfg-autosave">
+                                <label for="cfg-autosave">Auto-save automático</label>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-autosave-interval">Intervalo (segundos)</label>
+                                <input type="number" id="cfg-autosave-interval" value="30" min="5" max="600"
+                                    style="width:100px;">
+                            </div>
+                            <div style="font-size:11px; color:var(--text-muted);">
+                                Status: <span id="autosave-status">Desativado</span>
+                            </div>
+                        </div>
+
+                        <!-- Colar do Excel -->
+                        <div class="import-card">
+                            <div class="import-card-title">Importar via Colar (Excel/Sheets)</div>
+                            <div class="import-card-desc">Cole dados copiados de uma planilha. Aceita formato
+                                chave→valor ou cabeçalho+valores (TSV).</div>
+                            <textarea id="paste-area" class="paste-area" placeholder="Cole os dados aqui..."></textarea>
+                            <button class="btn btn-primary btn-sm btn-block" id="btn-paste-apply">Aplicar Dados
+                                Colados</button>
+                        </div>
+
+                        <!-- CSV -->
+                        <div class="import-card">
+                            <div class="import-card-title">Carregar CSV</div>
+                            <div class="import-card-desc">Importe um arquivo CSV com dados de configuração ou itens.
+                            </div>
+                            <div class="radio-group">
+                                <label><input type="radio" name="csv-type" value="config" checked> Configuração</label>
+                                <label><input type="radio" name="csv-type" value="items"> Itens</label>
+                            </div>
+                            <button class="btn btn-secondary btn-sm btn-block" id="btn-csv-upload">Selecionar
+                                CSV</button>
+                            <input type="file" id="file-csv" accept=".csv" style="display:none">
+                        </div>
+
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="tooltip-card"></div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts (order matters: dependencies first) -->
+    <script src="js/engine.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/tooltip.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/config-panel.js"></script>
+    <script src="js/item-editor.js"></script>
+    <script src="js/import-export.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+
+</html>
