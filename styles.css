@@ -916,6 +916,38 @@ body {
     margin: 14px 0;
 }
 
+/* ── Type Management Rows ────────────── */
+
+.type-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.type-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.type-row input[type="text"] {
+    flex: 1;
+    padding: 5px 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: var(--font-family);
+    min-width: 0;
+}
+
+.type-row input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
 /* ── Radio Group ─────────────────────── */
 
 .radio-group {

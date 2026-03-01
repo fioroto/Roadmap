@@ -11,29 +11,22 @@ const Tooltip = (() => {
         const seg = item.segments[segmentIndex];
         if (!seg) return;
 
-        const typeLabels = {
-            'EV': 'EV',
-            'TaticoNegócio': 'Tático Negócio',
-            'TaticoEngenharia': 'Tático Engenharia'
-        };
-
-        const statusLabels = {
-            '': null,
-            'Finalizado': 'Finalizado',
-            'PendenteSubida': 'Pendente de Subida',
-            'EmAndamento': 'Em Andamento'
-        };
+        const cfgTypes = State.getItemTypes();
+        const cfgStatuses = State.getStatusTypes();
+        const typeEntry = cfgTypes.find(t => t.value === item.type);
+        const typeColor = typeEntry ? typeEntry.color : '#6b7280';
+        const typeLabel = typeEntry ? typeEntry.label : item.type;
+        const statusEntry = cfgStatuses.find(s => s.value === item.status);
 
         let html = `<div class="tooltip-title">${escapeHtml(item.title)}</div>`;
 
         html += '<div class="tooltip-meta">';
-        html += `<span class="tooltip-type-chip" style="background:${getTypeColor(item.type)}">${typeLabels[item.type] || item.type}</span>`;
+        html += `<span class="tooltip-type-chip" style="background:${typeColor}">${escapeHtml(typeLabel)}</span>`;
         if (item.intruder) {
             html += '<span class="tooltip-intruder-badge">Intruder</span>';
         }
-        const statusLabel = statusLabels[item.status];
-        if (statusLabel) {
-            html += `<span class="tooltip-status">${statusLabel}</span>`;
+        if (statusEntry && statusEntry.value !== '') {
+            html += `<span class="tooltip-status">${escapeHtml(statusEntry.label)}</span>`;
         }
         html += '</div>';
 
@@ -82,11 +75,6 @@ const Tooltip = (() => {
 
     function hide() {
         if (tooltipEl) tooltipEl.classList.remove('visible');
-    }
-
-    function getTypeColor(type) {
-        const colors = { 'EV': '#0d9488', 'TaticoNegócio': '#d97706', 'TaticoEngenharia': '#4f46e5' };
-        return colors[type] || '#6b7280';
     }
 
     function escapeHtml(str) {
