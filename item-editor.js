@@ -1,25 +1,6 @@
 const ItemEditor = (() => {
     let selectedItemId = null;
 
-    const TYPE_OPTIONS = [
-        { value: 'EV', label: 'EV' },
-        { value: 'TaticoNegócio', label: 'Tático Negócio' },
-        { value: 'TaticoEngenharia', label: 'Tático Engenharia' }
-    ];
-
-    const STATUS_OPTIONS = [
-        { value: '', label: 'Nenhum' },
-        { value: 'EmAndamento', label: 'Em Andamento' },
-        { value: 'Finalizado', label: 'Finalizado' },
-        { value: 'PendenteSubida', label: 'Pendente de Subida' }
-    ];
-
-    const TYPE_COLORS = {
-        'EV': '#0d9488',
-        'TaticoNegócio': '#d97706',
-        'TaticoEngenharia': '#4f46e5'
-    };
-
     function init() {
         document.getElementById('btn-add-item').addEventListener('click', addNewItem);
         State.on('state:changed', renderList);
@@ -39,8 +20,10 @@ const ItemEditor = (() => {
             return;
         }
 
+        const cfgTypes = State.getItemTypes();
         listEl.innerHTML = items.map(item => {
-            const color = TYPE_COLORS[item.type] || '#6b7280';
+            const typeEntry = cfgTypes.find(t => t.value === item.type);
+            const color = typeEntry ? typeEntry.color : '#6b7280';
             const selected = item.id === selectedItemId ? ' selected' : '';
             return `
         <div class="item-card${selected}" data-id="${item.id}">
@@ -84,11 +67,13 @@ const ItemEditor = (() => {
     }
 
     function addNewItem() {
-        const sprints = Engine.calculateSprints(State.getConfig());
+        const cfg = State.getConfig();
+        const firstType = (cfg.itemTypes && cfg.itemTypes[0]) ? cfg.itemTypes[0].value : 'EV';
+        const sprints = Engine.calculateSprints(cfg);
         const defaultSprint = sprints.length ? sprints[0].number : 1;
         const id = State.addItem({
             title: 'Novo Item',
-            type: 'EV',
+            type: firstType,
             intruder: false,
             status: '',
             observacao: '',
@@ -104,6 +89,8 @@ const ItemEditor = (() => {
 
         const sprints = Engine.calculateSprints(State.getConfig());
         const sprintOptions = sprints.map(s => `<option value="${s.number}">Sprint ${s.number}</option>`).join('');
+        const cfgTypes = State.getItemTypes();
+        const cfgStatuses = State.getStatusTypes();
 
         let html = `
       <div class="config-section-title">Editar Item</div>
@@ -115,13 +102,13 @@ const ItemEditor = (() => {
         <div class="form-group">
           <label>Tipo</label>
           <select id="edit-type">
-            ${TYPE_OPTIONS.map(o => `<option value="${o.value}" ${item.type === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+            ${cfgTypes.map(o => `<option value="${escapeAttr(o.value)}" ${item.type === o.value ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
           <label>Status</label>
           <select id="edit-status">
-            ${STATUS_OPTIONS.map(o => `<option value="${o.value}" ${item.status === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+            ${cfgStatuses.map(o => `<option value="${escapeAttr(o.value)}" ${item.status === o.value ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
           </select>
         </div>
       </div>

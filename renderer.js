@@ -1,15 +1,4 @@
 const Renderer = (() => {
-    const TYPE_COLORS = {
-        'EV': { bg: '#0d9488', text: '#f0fdfa', border: '#14b8a6' },
-        'TaticoNegócio': { bg: '#d97706', text: '#fffbeb', border: '#f59e0b' },
-        'TaticoEngenharia': { bg: '#4f46e5', text: '#eef2ff', border: '#6366f1' }
-    };
-
-    const STATUS_ICONS = {
-        'Finalizado': '✓',
-        'PendenteSubida': '⏳',
-        'EmAndamento': '▶'
-    };
 
     let container = null;
     let sprints = [];
@@ -96,11 +85,18 @@ const Renderer = (() => {
 
         // Item bars
         const minSprint = sprints[0].number;
+        const cfgItemTypes = State.getItemTypes();
+        const cfgStatusTypes = State.getStatusTypes();
 
         trackEntries.forEach(entry => {
             const item = entry.item;
             const track = entry.track;
-            const typeColor = TYPE_COLORS[item.type] || TYPE_COLORS['EV'];
+            const typeEntry = cfgItemTypes.find(t => t.value === item.type) || cfgItemTypes[0] || { color: '#6b7280' };
+            const typeColor = {
+                bg: typeEntry.color,
+                text: State.getContrastColor(typeEntry.color),
+                border: typeEntry.color
+            };
 
             item.segments.forEach((seg, segIdx) => {
                 const startCol = seg.sprintStart - minSprint;
@@ -113,7 +109,8 @@ const Renderer = (() => {
                 if (item.intruder) barClass += ' intruder';
                 if (item.id === selectedItemId) barClass += ' selected';
 
-                const statusIcon = STATUS_ICONS[item.status] || '';
+                const statusEntry = cfgStatusTypes.find(s => s.value === item.status);
+                const statusIcon = statusEntry ? (statusEntry.icon || '') : '';
                 const statusHtml = statusIcon ? `<span class="item-status-icon">${statusIcon}</span>` : '';
 
                 const dataAttrs = `data-item-id="${item.id}" data-segment-index="${segIdx}" data-track="${track}"`;
@@ -175,10 +172,12 @@ const Renderer = (() => {
     }
 
     function addItemOnRoadmap() {
+        const cfg = State.getConfig();
+        const firstType = (cfg.itemTypes && cfg.itemTypes[0]) ? cfg.itemTypes[0].value : 'EV';
         const defaultSprint = sprints.length ? sprints[0].number : 1;
         const id = State.addItem({
             title: 'Novo Item',
-            type: 'EV',
+            type: firstType,
             intruder: false,
             status: '',
             observacao: '',
@@ -382,15 +381,21 @@ const Renderer = (() => {
         const legendEl = document.getElementById('roadmap-legend');
         if (!legendEl) return;
 
+        const itemTypes = State.getItemTypes();
+        const statusTypes = State.getStatusTypes();
+
         let html = '';
-        Object.entries(TYPE_COLORS).forEach(([type, colors]) => {
-            const label = type === 'TaticoNegócio' ? 'Tático Negócio' : type === 'TaticoEngenharia' ? 'Tático Engenharia' : type;
-            html += `<span class="legend-chip" style="background:${colors.bg}; color:${colors.text};">${label}</span>`;
+        itemTypes.forEach(t => {
+            const textColor = State.getContrastColor(t.color);
+            html += `<span class="legend-chip" style="background:${t.color}; color:${textColor};">${escapeHtml(t.label)}</span>`;
         });
 
         html += '<span class="legend-chip legend-chip-outline intruder-chip">Intruder</span>';
-        html += `<span class="legend-chip legend-chip-status"><span class="status-icon">✓</span> Finalizado</span>`;
-        html += `<span class="legend-chip legend-chip-status"><span class="status-icon">⏳</span> Pendente Subida</span>`;
+        statusTypes.forEach(s => {
+            if (s.value !== '' && s.icon) {
+                html += `<span class="legend-chip legend-chip-status"><span class="status-icon">${escapeHtml(s.icon)}</span> ${escapeHtml(s.label)}</span>`;
+            }
+        });
         html += '<span class="legend-chip legend-chip-delay">Delay</span>';
 
         legendEl.innerHTML = html;

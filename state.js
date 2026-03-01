@@ -8,7 +8,18 @@ const State = (() => {
         dataFim: '2026-04-06',
         diasSprint: 14,
         sprintStartNumber: 115,
-        bgColor: '#0f172a'
+        bgColor: '#0f172a',
+        itemTypes: [
+            { value: 'EV', label: 'EV', color: '#0d9488' },
+            { value: 'TaticoNegócio', label: 'Tático Negócio', color: '#d97706' },
+            { value: 'TaticoEngenharia', label: 'Tático Engenharia', color: '#4f46e5' }
+        ],
+        statusTypes: [
+            { value: '', label: 'Nenhum', icon: '' },
+            { value: 'EmAndamento', label: 'Em Andamento', icon: '▶' },
+            { value: 'Finalizado', label: 'Finalizado', icon: '✓' },
+            { value: 'PendenteSubida', label: 'Pendente de Subida', icon: '⏳' }
+        ]
     };
 
     let state = { config: { ...defaultConfig }, items: [] };
@@ -25,6 +36,8 @@ const State = (() => {
     function getConfig() { return state.config; }
     function getItems() { return state.items; }
     function getState() { return state; }
+    function getItemTypes() { return state.config.itemTypes || defaultConfig.itemTypes; }
+    function getStatusTypes() { return state.config.statusTypes || defaultConfig.statusTypes; }
 
     function setConfig(cfg) {
         state.config = { ...state.config, ...cfg };
@@ -70,10 +83,12 @@ const State = (() => {
     function normalizeItem(item) {
         let status = item.status || '';
         if (status === 'None' || status === 'none') status = '';
+        const firstType = (state.config.itemTypes && state.config.itemTypes[0])
+            ? state.config.itemTypes[0].value : 'EV';
         return {
             id: item.id || generateId(),
             title: item.title || 'Sem título',
-            type: item.type || 'EV',
+            type: item.type || firstType,
             intruder: !!item.intruder,
             status,
             observacao: item.observacao || '',
@@ -90,6 +105,20 @@ const State = (() => {
 
     function generateId() {
         return 'item-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+    }
+
+    function generateTypeId(prefix) {
+        return (prefix || 'type') + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+    }
+
+    function getContrastColor(hexColor) {
+        const hex = (hexColor || '#000000').replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16) || 0;
+        const g = parseInt(hex.substring(2, 4), 16) || 0;
+        const b = parseInt(hex.substring(4, 6), 16) || 0;
+        const toLinear = c => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+        const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+        return L > 0.179 ? '#1e293b' : '#f0fdfa';
     }
 
     function save() {
@@ -288,6 +317,8 @@ const State = (() => {
         exportJSON, importJSON, importConfigFromTSV,
         importConfigFromCSV, importItemsFromCSV,
         saveToFileSystem, loadFromFileSystem,
+        getItemTypes, getStatusTypes,
+        generateTypeId, getContrastColor,
         on, emit
     };
 })();
