@@ -16,6 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cfg.bgColor) {
             document.documentElement.style.setProperty('--bg-primary', cfg.bgColor);
         }
+        if (cfg.headerColor) {
+            document.querySelector('.app-header').style.background = cfg.headerColor;
+        }
     });
 
     // Panel tab switching
@@ -37,13 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
             sidePanel.classList.toggle('collapsed');
             toggleBtn.classList.toggle('collapsed');
             toggleBtn.textContent = sidePanel.classList.contains('collapsed') ? '▶' : '◀';
+            // Re-render roadmap after panel transition completes (200ms)
+            setTimeout(() => Renderer.render(), 210);
         });
     }
 
-    // Apply initial bg color
+    // Apply initial colors
     const initialBg = State.getConfig().bgColor;
     if (initialBg) {
         document.documentElement.style.setProperty('--bg-primary', initialBg);
+    }
+    const initialHeaderColor = State.getConfig().headerColor;
+    if (initialHeaderColor) {
+        document.querySelector('.app-header').style.background = initialHeaderColor;
     }
 
     Renderer.render();

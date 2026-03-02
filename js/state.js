@@ -9,6 +9,7 @@ const State = (() => {
         diasSprint: 14,
         sprintStartNumber: 115,
         bgColor: '#0f172a',
+        headerColor: '#1e293b',
         itemTypes: [
             { value: 'EV', label: 'EV', color: '#0d9488' },
             { value: 'TaticoNegócio', label: 'Tático Negócio', color: '#d97706' },
@@ -119,6 +120,14 @@ const State = (() => {
         const toLinear = c => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
         const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
         return L > 0.179 ? '#1e293b' : '#f0fdfa';
+    }
+
+    function darkenColor(hexColor, amount) {
+        const hex = (hexColor || '#000000').replace('#', '');
+        const r = Math.max(0, Math.round((parseInt(hex.substring(0, 2), 16) || 0) * (1 - amount)));
+        const g = Math.max(0, Math.round((parseInt(hex.substring(2, 4), 16) || 0) * (1 - amount)));
+        const b = Math.max(0, Math.round((parseInt(hex.substring(4, 6), 16) || 0) * (1 - amount)));
+        return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
     }
 
     function save() {
@@ -318,7 +327,7 @@ const State = (() => {
         importConfigFromCSV, importItemsFromCSV,
         saveToFileSystem, loadFromFileSystem,
         getItemTypes, getStatusTypes,
-        generateTypeId, getContrastColor,
+        generateTypeId, getContrastColor, darkenColor,
         on, emit
     };
 })();
