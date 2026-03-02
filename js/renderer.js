@@ -32,7 +32,13 @@ const Renderer = (() => {
         const trackCount = trackEntries.length ? Math.max(...trackEntries.map(e => e.track)) + 1 : 0;
 
         const sprintCount = sprints.length;
-        colWidth = Math.max(120, Math.floor(800 / sprintCount));
+
+        // Calculate colWidth based on actual available width
+        const wrapperEl = container.closest('.roadmap-wrapper');
+        const panel = document.getElementById('side-panel');
+        const panelOpen = panel && !panel.classList.contains('collapsed');
+        const availableWidth = wrapperEl.clientWidth - (panelOpen ? 380 : 0);
+        colWidth = Math.max(80, Math.floor(availableWidth / sprintCount));
 
         const headerEl = document.getElementById('roadmap-title');
         const subtitleEl = document.getElementById('roadmap-subtitle');
@@ -95,7 +101,7 @@ const Renderer = (() => {
             const typeColor = {
                 bg: typeEntry.color,
                 text: State.getContrastColor(typeEntry.color),
-                border: typeEntry.color
+                border: State.darkenColor(typeEntry.color, 0.25)
             };
 
             item.segments.forEach((seg, segIdx) => {

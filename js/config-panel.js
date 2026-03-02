@@ -1,6 +1,7 @@
 const ConfigPanel = (() => {
     let debounceTimer = null;
     let typeDebounceTimer = null;
+    let _skipTypeRerender = false;
 
     function init() {
         const fields = ['periodo', 'squad', 'dataInicio', 'dataFim', 'diasSprint', 'sprintStartNumber'];
@@ -29,17 +30,41 @@ const ConfigPanel = (() => {
             });
         }
 
+        // Header color picker
+        const headerColorPicker = document.getElementById('cfg-headerColor');
+        const headerColorText = document.getElementById('cfg-headerColorText');
+        if (headerColorPicker && headerColorText) {
+            headerColorPicker.addEventListener('input', () => {
+                headerColorText.value = headerColorPicker.value;
+                _skipTypeRerender = true;
+                State.setConfig({ headerColor: headerColorPicker.value });
+                _skipTypeRerender = false;
+            });
+            headerColorText.addEventListener('input', () => {
+                if (/^#[0-9a-fA-F]{6}$/.test(headerColorText.value)) {
+                    headerColorPicker.value = headerColorText.value;
+                    _skipTypeRerender = true;
+                    State.setConfig({ headerColor: headerColorText.value });
+                    _skipTypeRerender = false;
+                }
+            });
+        }
+
         const applyBtn = document.getElementById('btn-apply-config');
         if (applyBtn) applyBtn.addEventListener('click', applyConfig);
 
         populateForm();
         renderTypeManagement();
         State.on('config:changed', populateForm);
-        State.on('config:changed', renderTypeManagement);
+        State.on('config:changed', () => {
+            if (!_skipTypeRerender) renderTypeManagement();
+        });
     }
 
     function applyBgColor(color) {
+        _skipTypeRerender = true;
         State.setConfig({ bgColor: color });
+        _skipTypeRerender = false;
     }
 
     function populateForm() {
@@ -56,6 +81,12 @@ const ConfigPanel = (() => {
         const colorText = document.getElementById('cfg-bgColorText');
         if (colorPicker && colorPicker.value !== bgColor) colorPicker.value = bgColor;
         if (colorText && colorText.value !== bgColor) colorText.value = bgColor;
+
+        const headerColor = cfg.headerColor || '#1e293b';
+        const headerColorPicker = document.getElementById('cfg-headerColor');
+        const headerColorText = document.getElementById('cfg-headerColorText');
+        if (headerColorPicker && headerColorPicker.value !== headerColor) headerColorPicker.value = headerColor;
+        if (headerColorText && headerColorText.value !== headerColor) headerColorText.value = headerColor;
     }
 
     function setVal(id, val) {
@@ -71,7 +102,8 @@ const ConfigPanel = (() => {
             dataFim: getVal('cfg-dataFim'),
             diasSprint: parseInt(getVal('cfg-diasSprint'), 10) || 14,
             sprintStartNumber: parseInt(getVal('cfg-sprintStartNumber'), 10) || 1,
-            bgColor: getVal('cfg-bgColor') || '#0f172a'
+            bgColor: getVal('cfg-bgColor') || '#0f172a',
+            headerColor: getVal('cfg-headerColor') || '#1e293b'
         });
     }
 
@@ -91,6 +123,7 @@ const ConfigPanel = (() => {
     }
 
     function renderTypeManagement() {
+        if (_skipTypeRerender) return;
         const container = document.getElementById('type-management-container');
         if (!container) return;
 
@@ -165,7 +198,12 @@ const ConfigPanel = (() => {
         container.querySelectorAll('.type-color-picker').forEach(picker => {
             picker.addEventListener('input', () => {
                 const idx = parseInt(picker.dataset.idx, 10);
+                _skipTypeRerender = true;
                 State.setConfig({ itemTypes: itemTypes.map((t, i) => i === idx ? { ...t, color: picker.value } : t) });
+                _skipTypeRerender = false;
+            });
+            picker.addEventListener('change', () => {
+                renderTypeManagement();
             });
         });
 
@@ -175,11 +213,13 @@ const ConfigPanel = (() => {
                 typeDebounceTimer = setTimeout(() => {
                     const idx = parseInt(input.dataset.idx, 10);
                     const kind = input.dataset.kind;
+                    _skipTypeRerender = true;
                     if (kind === 'item') {
                         State.setConfig({ itemTypes: itemTypes.map((t, i) => i === idx ? { ...t, label: input.value } : t) });
                     } else {
                         State.setConfig({ statusTypes: statusTypes.map((s, i) => i === idx ? { ...s, label: input.value } : s) });
                     }
+                    _skipTypeRerender = false;
                 }, 300);
             });
         });
@@ -189,7 +229,9 @@ const ConfigPanel = (() => {
                 clearTimeout(typeDebounceTimer);
                 typeDebounceTimer = setTimeout(() => {
                     const idx = parseInt(input.dataset.idx, 10);
+                    _skipTypeRerender = true;
                     State.setConfig({ statusTypes: statusTypes.map((s, i) => i === idx ? { ...s, icon: input.value } : s) });
+                    _skipTypeRerender = false;
                 }, 300);
             });
         });
