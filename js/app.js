@@ -19,6 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cfg.headerColor) {
             document.querySelector('.app-header').style.background = cfg.headerColor;
         }
+        if (cfg.monthBandColor) {
+            document.documentElement.style.setProperty('--month-band-bg', cfg.monthBandColor);
+        }
+        if (cfg.sprintBandColor) {
+            document.documentElement.style.setProperty('--sprint-band-bg', cfg.sprintBandColor);
+        }
     });
 
     // Panel tab switching
@@ -53,6 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialHeaderColor = State.getConfig().headerColor;
     if (initialHeaderColor) {
         document.querySelector('.app-header').style.background = initialHeaderColor;
+    }
+    const initialMonthBandColor = State.getConfig().monthBandColor;
+    if (initialMonthBandColor) {
+        document.documentElement.style.setProperty('--month-band-bg', initialMonthBandColor);
+    }
+    const initialSprintBandColor = State.getConfig().sprintBandColor;
+    if (initialSprintBandColor) {
+        document.documentElement.style.setProperty('--sprint-band-bg', initialSprintBandColor);
     }
 
     Renderer.render();

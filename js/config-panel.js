@@ -50,6 +50,46 @@ const ConfigPanel = (() => {
             });
         }
 
+        // Month band color picker
+        const monthBandColorPicker = document.getElementById('cfg-monthBandColor');
+        const monthBandColorText = document.getElementById('cfg-monthBandColorText');
+        if (monthBandColorPicker && monthBandColorText) {
+            monthBandColorPicker.addEventListener('input', () => {
+                monthBandColorText.value = monthBandColorPicker.value;
+                _skipTypeRerender = true;
+                State.setConfig({ monthBandColor: monthBandColorPicker.value });
+                _skipTypeRerender = false;
+            });
+            monthBandColorText.addEventListener('input', () => {
+                if (/^#[0-9a-fA-F]{6}$/.test(monthBandColorText.value)) {
+                    monthBandColorPicker.value = monthBandColorText.value;
+                    _skipTypeRerender = true;
+                    State.setConfig({ monthBandColor: monthBandColorText.value });
+                    _skipTypeRerender = false;
+                }
+            });
+        }
+
+        // Sprint band color picker
+        const sprintBandColorPicker = document.getElementById('cfg-sprintBandColor');
+        const sprintBandColorText = document.getElementById('cfg-sprintBandColorText');
+        if (sprintBandColorPicker && sprintBandColorText) {
+            sprintBandColorPicker.addEventListener('input', () => {
+                sprintBandColorText.value = sprintBandColorPicker.value;
+                _skipTypeRerender = true;
+                State.setConfig({ sprintBandColor: sprintBandColorPicker.value });
+                _skipTypeRerender = false;
+            });
+            sprintBandColorText.addEventListener('input', () => {
+                if (/^#[0-9a-fA-F]{6}$/.test(sprintBandColorText.value)) {
+                    sprintBandColorPicker.value = sprintBandColorText.value;
+                    _skipTypeRerender = true;
+                    State.setConfig({ sprintBandColor: sprintBandColorText.value });
+                    _skipTypeRerender = false;
+                }
+            });
+        }
+
         const applyBtn = document.getElementById('btn-apply-config');
         if (applyBtn) applyBtn.addEventListener('click', applyConfig);
 
@@ -87,6 +127,18 @@ const ConfigPanel = (() => {
         const headerColorText = document.getElementById('cfg-headerColorText');
         if (headerColorPicker && headerColorPicker.value !== headerColor) headerColorPicker.value = headerColor;
         if (headerColorText && headerColorText.value !== headerColor) headerColorText.value = headerColor;
+
+        const monthBandColor = cfg.monthBandColor || '#1e293b';
+        const mbPicker = document.getElementById('cfg-monthBandColor');
+        const mbText = document.getElementById('cfg-monthBandColorText');
+        if (mbPicker && mbPicker.value !== monthBandColor) mbPicker.value = monthBandColor;
+        if (mbText && mbText.value !== monthBandColor) mbText.value = monthBandColor;
+
+        const sprintBandColor = cfg.sprintBandColor || '#334155';
+        const sbPicker = document.getElementById('cfg-sprintBandColor');
+        const sbText = document.getElementById('cfg-sprintBandColorText');
+        if (sbPicker && sbPicker.value !== sprintBandColor) sbPicker.value = sprintBandColor;
+        if (sbText && sbText.value !== sprintBandColor) sbText.value = sprintBandColor;
     }
 
     function setVal(id, val) {
@@ -103,7 +155,9 @@ const ConfigPanel = (() => {
             diasSprint: parseInt(getVal('cfg-diasSprint'), 10) || 14,
             sprintStartNumber: parseInt(getVal('cfg-sprintStartNumber'), 10) || 1,
             bgColor: getVal('cfg-bgColor') || '#0f172a',
-            headerColor: getVal('cfg-headerColor') || '#1e293b'
+            headerColor: getVal('cfg-headerColor') || '#1e293b',
+            monthBandColor: getVal('cfg-monthBandColor') || '#1e293b',
+            sprintBandColor: getVal('cfg-sprintBandColor') || '#334155'
         });
     }
 

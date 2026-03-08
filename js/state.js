@@ -10,6 +10,8 @@ const State = (() => {
         sprintStartNumber: 115,
         bgColor: '#0f172a',
         headerColor: '#1e293b',
+        monthBandColor: '#1e293b',
+        sprintBandColor: '#334155',
         itemTypes: [
             { value: 'EV', label: 'EV', color: '#0d9488' },
             { value: 'TaticoNegócio', label: 'Tático Negócio', color: '#d97706' },

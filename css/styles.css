@@ -25,6 +25,8 @@
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --transition: 150ms ease;
+    --month-band-bg: #1e293b;
+    --sprint-band-bg: #334155;
 }
 
 *,
@@ -175,7 +177,7 @@ body {
 
 .month-band {
     display: grid;
-    background: var(--bg-secondary);
+    background: var(--month-band-bg);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -186,7 +188,7 @@ body {
     color: var(--text-primary);
     text-align: center;
     border-right: 1px solid var(--border-color);
-    background: var(--bg-secondary);
+    background: var(--month-band-bg);
     letter-spacing: 0.3px;
 }
 
@@ -198,7 +200,7 @@ body {
 
 .sprint-band {
     display: grid;
-    background: var(--bg-tertiary);
+    background: var(--sprint-band-bg);
     border-bottom: 2px solid var(--border-light);
 }
 
