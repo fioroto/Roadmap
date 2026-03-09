@@ -27,6 +27,11 @@
     --transition: 150ms ease;
     --month-band-bg: #1e293b;
     --sprint-band-bg: #334155;
+    --header-text: #f1f5f9;
+    --header-text-secondary: #94a3b8;
+    --month-band-text: #f1f5f9;
+    --sprint-band-text: #f1f5f9;
+    --sprint-band-text-muted: #94a3b8;
 }
 
 *,
@@ -77,13 +82,13 @@ body {
     font-size: 20px;
     font-weight: 600;
     letter-spacing: 0.5px;
-    color: var(--text-primary);
+    color: var(--header-text);
 }
 
 .roadmap-subtitle {
     font-size: 13px;
     font-weight: 400;
-    color: var(--text-secondary);
+    color: var(--header-text-secondary);
 }
 
 .app-body {
@@ -185,7 +190,7 @@ body {
     padding: 8px 12px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--month-band-text);
     text-align: center;
     border-right: 1px solid var(--border-color);
     background: var(--month-band-bg);
@@ -221,13 +226,13 @@ body {
 .sprint-number {
     font-size: 11px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--sprint-band-text);
 }
 
 .sprint-dates {
     font-size: 9px;
     font-weight: 400;
-    color: var(--text-muted);
+    color: var(--sprint-band-text-muted);
 }
 
 /* ── Grid Area ───────────────────────── */
