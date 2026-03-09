@@ -151,6 +151,16 @@
                     <!-- ─── Import/Export Section ─── -->
                     <div id="section-import" class="panel-section">
 
+                        <!-- HTML + PNG Export -->
+                        <div class="import-card">
+                            <div class="import-card-title">Exportar HTML + Imagem</div>
+                            <div class="import-card-desc">Exporte o roadmap como HTML com imagem PNG na mesma pasta. A imagem é referenciada com caminho relativo.</div>
+                            <div class="btn-group" style="margin-top:0;">
+                                <button class="btn btn-primary btn-sm" id="btn-export-html">Exportar HTML + PNG</button>
+                                <button class="btn btn-secondary btn-sm" id="btn-export-png">Exportar só PNG</button>
+                            </div>
+                        </div>
+
                         <!-- JSON -->
                         <div class="import-card">
                             <div class="import-card-title">JSON</div>
@@ -223,6 +233,7 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Scripts (order matters: dependencies first) -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="js/engine.js"></script>
     <script src="js/state.js"></script>
     <script src="js/tooltip.js"></script>
