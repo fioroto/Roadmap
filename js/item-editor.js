@@ -82,13 +82,23 @@ const ItemEditor = (() => {
         selectItem(id);
     }
 
+    function sprintSelectOptions(sprints, selectedValue) {
+        let opts = '';
+        sprints.forEach(s => {
+            const selStart = selectedValue === s.number ? ' selected' : '';
+            const selMid = selectedValue === s.number + 0.5 ? ' selected' : '';
+            opts += `<option value="${s.number}"${selStart}>Sprint ${s.number} (início)</option>`;
+            opts += `<option value="${s.number + 0.5}"${selMid}>Sprint ${s.number} (meio)</option>`;
+        });
+        return opts;
+    }
+
     function renderForm(id) {
         const formEl = document.getElementById('item-form');
         const item = State.getItems().find(i => i.id === id);
         if (!item) { clearForm(); return; }
 
         const sprints = Engine.calculateSprints(State.getConfig());
-        const sprintOptions = sprints.map(s => `<option value="${s.number}">Sprint ${s.number}</option>`).join('');
         const cfgTypes = State.getItemTypes();
         const cfgStatuses = State.getStatusTypes();
 
@@ -134,13 +144,13 @@ const ItemEditor = (() => {
             <div class="form-group">
               <label>Sprint Início</label>
               <select data-field="seg-start" data-seg="${segIdx}">
-                ${sprints.map(s => `<option value="${s.number}" ${seg.sprintStart === s.number ? 'selected' : ''}>Sprint ${s.number}</option>`).join('')}
+                ${sprintSelectOptions(sprints, seg.sprintStart)}
               </select>
             </div>
             <div class="form-group">
               <label>Sprint Fim</label>
               <select data-field="seg-end" data-seg="${segIdx}">
-                ${sprints.map(s => `<option value="${s.number}" ${seg.sprintEnd === s.number ? 'selected' : ''}>Sprint ${s.number}</option>`).join('')}
+                ${sprintSelectOptions(sprints, seg.sprintEnd)}
               </select>
             </div>
           </div>`;
@@ -156,13 +166,13 @@ const ItemEditor = (() => {
               <div class="form-group">
                 <label>Sprint Início</label>
                 <select data-field="delay-start" data-seg="${segIdx}" data-delay="${dIdx}">
-                  ${sprints.map(s => `<option value="${s.number}" ${delay.delaySprintStart === s.number ? 'selected' : ''}>Sprint ${s.number}</option>`).join('')}
+                  ${sprintSelectOptions(sprints, delay.delaySprintStart)}
                 </select>
               </div>
               <div class="form-group">
                 <label>Sprint Fim</label>
                 <select data-field="delay-end" data-seg="${segIdx}" data-delay="${dIdx}">
-                  ${sprints.map(s => `<option value="${s.number}" ${delay.delaySprintEnd === s.number ? 'selected' : ''}>Sprint ${s.number}</option>`).join('')}
+                  ${sprintSelectOptions(sprints, delay.delaySprintEnd)}
                 </select>
               </div>
             </div>
@@ -240,14 +250,14 @@ const ItemEditor = (() => {
                 const startSel = formEl.querySelector(`[data-field="seg-start"][data-seg="${segIdx}"]`);
                 const endSel = formEl.querySelector(`[data-field="seg-end"][data-seg="${segIdx}"]`);
                 const newSeg = {
-                    sprintStart: startSel ? parseInt(startSel.value, 10) : seg.sprintStart,
-                    sprintEnd: endSel ? parseInt(endSel.value, 10) : seg.sprintEnd,
+                    sprintStart: startSel ? parseFloat(startSel.value) : seg.sprintStart,
+                    sprintEnd: endSel ? parseFloat(endSel.value) : seg.sprintEnd,
                     delays: (seg.delays || []).map((d, dIdx) => {
                         const ds = formEl.querySelector(`[data-field="delay-start"][data-seg="${segIdx}"][data-delay="${dIdx}"]`);
                         const de = formEl.querySelector(`[data-field="delay-end"][data-seg="${segIdx}"][data-delay="${dIdx}"]`);
                         return {
-                            delaySprintStart: ds ? parseInt(ds.value, 10) : d.delaySprintStart,
-                            delaySprintEnd: de ? parseInt(de.value, 10) : d.delaySprintEnd
+                            delaySprintStart: ds ? parseFloat(ds.value) : d.delaySprintStart,
+                            delaySprintEnd: de ? parseFloat(de.value) : d.delaySprintEnd
                         };
                     })
                 };

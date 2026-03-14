@@ -275,8 +275,8 @@ const State = (() => {
                 itemMap[id].segments.push({ sprintStart: 0, sprintEnd: 0, delays: [] });
             }
             const seg = itemMap[id].segments[segIdx];
-            if (row.sprintStart) seg.sprintStart = parseInt(row.sprintStart, 10);
-            if (row.sprintEnd) seg.sprintEnd = parseInt(row.sprintEnd, 10);
+            if (row.sprintStart) seg.sprintStart = parseFloat(row.sprintStart);
+            if (row.sprintEnd) seg.sprintEnd = parseFloat(row.sprintEnd);
 
             if (row.delaySprintStart && row.delaySprintEnd) {
                 seg.delays.push({

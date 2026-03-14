@@ -86,8 +86,10 @@ const Renderer = (() => {
             }
         }
 
-        // Add item button (floating in the grid)
-        html += `<button class="roadmap-add-btn" id="btn-roadmap-add" title="Adicionar item ao roadmap">+</button>`;
+        // Mid-sprint dashed separators
+        for (let i = 0; i < sprintCount; i++) {
+            html += `<div class="sprint-mid-separator" style="left: ${i * colWidth + colWidth / 2}px;"></div>`;
+        }
 
         // Item bars
         const minSprint = sprints[0].number;
@@ -141,6 +143,9 @@ const Renderer = (() => {
         });
 
         html += '</div>'; // end grid
+
+        // Add item button (below the grid)
+        html += `<div class="roadmap-add-btn-wrapper"><button class="roadmap-add-btn" id="btn-roadmap-add" title="Adicionar item ao roadmap">+ Novo Item</button></div>`;
 
         container.innerHTML = html;
 
@@ -297,12 +302,12 @@ const Renderer = (() => {
             dragState.bar.style.opacity = '0.85';
         } else if (dragState.type === 'resize') {
             if (dragState.side === 'right') {
-                const newWidth = Math.max(colWidth, dragState.originalWidth + dx);
+                const newWidth = Math.max(colWidth / 2, dragState.originalWidth + dx);
                 dragState.bar.style.width = newWidth + 'px';
             } else {
                 const newLeft = dragState.originalLeft + dx;
                 const newWidth = dragState.originalWidth - dx;
-                if (newWidth >= colWidth) {
+                if (newWidth >= colWidth / 2) {
                     dragState.bar.style.left = newLeft + 'px';
                     dragState.bar.style.width = newWidth + 'px';
                 }
@@ -336,9 +341,10 @@ const Renderer = (() => {
             const barLeft = parseFloat(state.bar.style.left);
             const segSpan = seg.sprintEnd - seg.sprintStart;
 
-            // Calculate new sprint start from position
-            let newStartIdx = Math.round(barLeft / colWidth);
-            newStartIdx = Math.max(0, Math.min(sprints.length - 1 - segSpan, newStartIdx));
+            // Calculate new sprint start from position (snap to half-sprint)
+            const halfCol = colWidth / 2;
+            let newStartIdx = Math.round(barLeft / halfCol) * 0.5;
+            newStartIdx = Math.max(0, Math.min(sprints.length - 1 + 0.5 - segSpan, newStartIdx));
             const newSprintStart = minSprint + newStartIdx;
             const newSprintEnd = newSprintStart + segSpan;
 
@@ -359,8 +365,9 @@ const Renderer = (() => {
             const barLeft = parseFloat(state.bar.style.left);
             const barWidth = parseFloat(state.bar.style.width);
 
+            const halfCol = colWidth / 2;
             if (state.side === 'left') {
-                let newStartIdx = Math.round(barLeft / colWidth);
+                let newStartIdx = Math.round(barLeft / halfCol) * 0.5;
                 newStartIdx = Math.max(0, newStartIdx);
                 const newSprintStart = minSprint + newStartIdx;
                 if (newSprintStart <= seg.sprintEnd) {
@@ -370,8 +377,8 @@ const Renderer = (() => {
                     render();
                 }
             } else {
-                let endIdx = Math.round((barLeft + barWidth) / colWidth) - 1;
-                endIdx = Math.max(seg.sprintStart - minSprint, Math.min(sprints.length - 1, endIdx));
+                let endIdx = Math.round((barLeft + barWidth) / halfCol) * 0.5 - 0.5;
+                endIdx = Math.max(seg.sprintStart - minSprint, Math.min(sprints.length - 0.5, endIdx));
                 const newSprintEnd = minSprint + endIdx;
                 if (newSprintEnd >= seg.sprintStart) {
                     seg.sprintEnd = newSprintEnd;

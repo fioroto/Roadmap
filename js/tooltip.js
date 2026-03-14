@@ -31,13 +31,13 @@ const Tooltip = (() => {
         html += '</div>';
 
         html += '<div class="tooltip-detail">';
-        html += `<div class="tooltip-row"><span class="tooltip-label">Segmento</span><span class="tooltip-value">Sprint ${seg.sprintStart} → Sprint ${seg.sprintEnd}</span></div>`;
+        html += `<div class="tooltip-row"><span class="tooltip-label">Segmento</span><span class="tooltip-value">${formatSprint(seg.sprintStart)} → ${formatSprint(seg.sprintEnd)}</span></div>`;
 
         if (seg.delays && seg.delays.length > 0) {
             html += '<div class="tooltip-row"><span class="tooltip-label">Delays</span><span class="tooltip-value">';
             seg.delays.forEach((d, i) => {
                 if (i > 0) html += ', ';
-                html += `Sprint ${d.delaySprintStart}–${d.delaySprintEnd}`;
+                html += `${formatSprint(d.delaySprintStart)}–${formatSprint(d.delaySprintEnd)}`;
             });
             html += '</span></div>';
         }
@@ -71,6 +71,11 @@ const Tooltip = (() => {
 
         tooltipEl.style.left = x + 'px';
         tooltipEl.style.top = y + 'px';
+    }
+
+    function formatSprint(val) {
+        if (val % 1 === 0.5) return `Sprint ${Math.floor(val)}½`;
+        return `Sprint ${val}`;
     }
 
     function hide() {
