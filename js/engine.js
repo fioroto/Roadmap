@@ -43,6 +43,14 @@ const Engine = (() => {
         return bands;
     }
 
+    function segEffectiveStart(seg) {
+        return seg.sprintStart + (seg.startHalf ? 0.5 : 0);
+    }
+
+    function segEffectiveEnd(seg) {
+        return seg.sprintEnd + (seg.endHalf ? -0.5 : 0);
+    }
+
     function allocateTracks(items, sprints) {
         if (!sprints.length || !items.length) return [];
 
@@ -53,8 +61,8 @@ const Engine = (() => {
         const entries = items.map(item => {
             let globalStart = Infinity, globalEnd = -Infinity;
             item.segments.forEach(seg => {
-                const ss = Math.max(seg.sprintStart, minSprint);
-                const se = Math.min(seg.sprintEnd, maxSprint);
+                const ss = Math.max(segEffectiveStart(seg), minSprint);
+                const se = Math.min(segEffectiveEnd(seg), maxSprint);
                 if (ss < globalStart) globalStart = ss;
                 if (se > globalEnd) globalEnd = se;
             });
@@ -67,15 +75,15 @@ const Engine = (() => {
             let placed = false;
             for (let t = 0; t < tracks.length; t++) {
                 const canPlace = entry.item.segments.every(seg => {
-                    const ss = Math.max(seg.sprintStart, minSprint);
-                    const se = Math.min(seg.sprintEnd, maxSprint);
+                    const ss = Math.max(segEffectiveStart(seg), minSprint);
+                    const se = Math.min(segEffectiveEnd(seg), maxSprint);
                     return tracks[t].every(occ => occ.end < ss || occ.start > se);
                 });
                 if (canPlace) {
                     entry.item.segments.forEach(seg => {
                         tracks[t].push({
-                            start: Math.max(seg.sprintStart, minSprint),
-                            end: Math.min(seg.sprintEnd, maxSprint)
+                            start: Math.max(segEffectiveStart(seg), minSprint),
+                            end: Math.min(segEffectiveEnd(seg), maxSprint)
                         });
                     });
                     entry.track = t;
@@ -88,8 +96,8 @@ const Engine = (() => {
                 tracks.push([]);
                 entry.item.segments.forEach(seg => {
                     tracks[t].push({
-                        start: Math.max(seg.sprintStart, minSprint),
-                        end: Math.min(seg.sprintEnd, maxSprint)
+                        start: Math.max(segEffectiveStart(seg), minSprint),
+                        end: Math.min(segEffectiveEnd(seg), maxSprint)
                     });
                 });
                 entry.track = t;
@@ -107,12 +115,19 @@ const Engine = (() => {
         return items.map(item => ({
             ...item,
             segments: item.segments.map(seg => {
-                const ss = Math.max(min, Math.min(max, seg.sprintStart));
-                const se = Math.max(ss, Math.min(max, seg.sprintEnd));
+                let ss = Math.max(min, Math.min(max, seg.sprintStart));
+                let se = Math.max(ss, Math.min(max, seg.sprintEnd));
+                let sh = !!seg.startHalf;
+                let eh = !!seg.endHalf;
+                // If clamped to min, can't start at half if sprint was pushed
+                if (seg.sprintStart < min) sh = false;
+                if (seg.sprintEnd > max) eh = false;
                 return {
                     ...seg,
                     sprintStart: ss,
                     sprintEnd: se,
+                    startHalf: sh,
+                    endHalf: eh,
                     delays: (seg.delays || []).map(d => ({
                         delaySprintStart: Math.max(ss, Math.min(se, d.delaySprintStart)),
                         delaySprintEnd: Math.max(ss, Math.min(se, d.delaySprintEnd))
@@ -128,5 +143,5 @@ const Engine = (() => {
         return `${d}/${m}`;
     }
 
-    return { calculateSprints, calculateMonthBands, allocateTracks, clampSegments, formatDateShort };
+    return { calculateSprints, calculateMonthBands, allocateTracks, clampSegments, formatDateShort, segEffectiveStart, segEffectiveEnd };
 })();

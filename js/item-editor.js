@@ -82,6 +82,27 @@ const ItemEditor = (() => {
         selectItem(id);
     }
 
+    function sprintHalfOptions(sprints, selectedSprint, isHalf, mode) {
+        // mode: 'start' or 'end'
+        // For start: "Início" = not half (beginning), "Meio" = half (middle)
+        // For end: "Meio" = half (middle), "Fim" = not half (end)
+        let html = '';
+        sprints.forEach(s => {
+            if (mode === 'start') {
+                const selBegin = (s.number === selectedSprint && !isHalf) ? 'selected' : '';
+                const selMid = (s.number === selectedSprint && isHalf) ? 'selected' : '';
+                html += `<option value="${s.number}" data-half="false" ${selBegin}>Sprint ${s.number} (início)</option>`;
+                html += `<option value="${s.number}" data-half="true" ${selMid}>Sprint ${s.number} (meio)</option>`;
+            } else {
+                const selMid = (s.number === selectedSprint && isHalf) ? 'selected' : '';
+                const selEnd = (s.number === selectedSprint && !isHalf) ? 'selected' : '';
+                html += `<option value="${s.number}" data-half="true" ${selMid}>Sprint ${s.number} (meio)</option>`;
+                html += `<option value="${s.number}" data-half="false" ${selEnd}>Sprint ${s.number} (fim)</option>`;
+            }
+        });
+        return html;
+    }
+
     function renderForm(id) {
         const formEl = document.getElementById('item-form');
         const item = State.getItems().find(i => i.id === id);
@@ -134,13 +155,13 @@ const ItemEditor = (() => {
             <div class="form-group">
               <label>Sprint Início</label>
               <select data-field="seg-start" data-seg="${segIdx}">
-                ${sprints.map(s => `<option value="${s.number}" ${seg.sprintStart === s.number ? 'selected' : ''}>Sprint ${s.number}</option>`).join('')}
+                ${sprintHalfOptions(sprints, seg.sprintStart, !!seg.startHalf, 'start')}
               </select>
             </div>
             <div class="form-group">
               <label>Sprint Fim</label>
               <select data-field="seg-end" data-seg="${segIdx}">
-                ${sprints.map(s => `<option value="${s.number}" ${seg.sprintEnd === s.number ? 'selected' : ''}>Sprint ${s.number}</option>`).join('')}
+                ${sprintHalfOptions(sprints, seg.sprintEnd, !!seg.endHalf, 'end')}
               </select>
             </div>
           </div>`;
@@ -239,9 +260,13 @@ const ItemEditor = (() => {
             segments: item.segments.map((seg, segIdx) => {
                 const startSel = formEl.querySelector(`[data-field="seg-start"][data-seg="${segIdx}"]`);
                 const endSel = formEl.querySelector(`[data-field="seg-end"][data-seg="${segIdx}"]`);
+                const startOption = startSel ? startSel.options[startSel.selectedIndex] : null;
+                const endOption = endSel ? endSel.options[endSel.selectedIndex] : null;
                 const newSeg = {
                     sprintStart: startSel ? parseInt(startSel.value, 10) : seg.sprintStart,
                     sprintEnd: endSel ? parseInt(endSel.value, 10) : seg.sprintEnd,
+                    startHalf: startOption ? startOption.dataset.half === 'true' : !!seg.startHalf,
+                    endHalf: endOption ? endOption.dataset.half === 'true' : !!seg.endHalf,
                     delays: (seg.delays || []).map((d, dIdx) => {
                         const ds = formEl.querySelector(`[data-field="delay-start"][data-seg="${segIdx}"][data-delay="${dIdx}"]`);
                         const de = formEl.querySelector(`[data-field="delay-end"][data-seg="${segIdx}"][data-delay="${dIdx}"]`);

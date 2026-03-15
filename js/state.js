@@ -98,6 +98,8 @@ const State = (() => {
             segments: (item.segments || []).map(seg => ({
                 sprintStart: seg.sprintStart,
                 sprintEnd: seg.sprintEnd,
+                startHalf: !!seg.startHalf,
+                endHalf: !!seg.endHalf,
                 delays: (seg.delays || []).map(d => ({
                     delaySprintStart: d.delaySprintStart,
                     delaySprintEnd: d.delaySprintEnd
@@ -277,6 +279,8 @@ const State = (() => {
             const seg = itemMap[id].segments[segIdx];
             if (row.sprintStart) seg.sprintStart = parseInt(row.sprintStart, 10);
             if (row.sprintEnd) seg.sprintEnd = parseInt(row.sprintEnd, 10);
+            if (row.startHalf) seg.startHalf = row.startHalf === 'true' || row.startHalf === '1';
+            if (row.endHalf) seg.endHalf = row.endHalf === 'true' || row.endHalf === '1';
 
             if (row.delaySprintStart && row.delaySprintEnd) {
                 seg.delays.push({
