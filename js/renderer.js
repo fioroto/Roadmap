@@ -74,9 +74,12 @@ const Renderer = (() => {
         const gridHeight = Math.max(trackCount, 3) * 52 + 16;
         html += `<div class="roadmap-grid" id="roadmap-grid" style="width: ${sprintCount * colWidth}px; min-height: ${gridHeight}px; position: relative;">`;
 
-        // Vertical separators
+        // Vertical separators (full sprint boundaries + mid-sprint dashes)
         for (let i = 1; i < sprintCount; i++) {
             html += `<div class="sprint-separator" style="left: ${i * colWidth}px;"></div>`;
+        }
+        for (let i = 0; i < sprintCount; i++) {
+            html += `<div class="sprint-separator sprint-mid-separator" style="left: ${i * colWidth + colWidth / 2}px;"></div>`;
         }
 
         // Alternating sprint backgrounds
@@ -85,9 +88,6 @@ const Renderer = (() => {
                 html += `<div class="sprint-bg-alt" style="left: ${i * colWidth}px; width: ${colWidth}px;"></div>`;
             }
         }
-
-        // Add item button (floating in the grid)
-        html += `<button class="roadmap-add-btn" id="btn-roadmap-add" title="Adicionar item ao roadmap">+</button>`;
 
         // Item bars
         const minSprint = sprints[0].number;
@@ -105,8 +105,10 @@ const Renderer = (() => {
             };
 
             item.segments.forEach((seg, segIdx) => {
-                const startCol = seg.sprintStart - minSprint;
-                const span = seg.sprintEnd - seg.sprintStart + 1;
+                const startOffset = seg.startHalf ? 0.5 : 0;
+                const endOffset = seg.endHalf ? -0.5 : 0;
+                const startCol = (seg.sprintStart - minSprint) + startOffset;
+                const span = seg.sprintEnd - seg.sprintStart + 1 + endOffset - startOffset;
                 const left = startCol * colWidth;
                 const width = span * colWidth;
                 const top = track * 52 + 8;
@@ -159,13 +161,13 @@ const Renderer = (() => {
             bar.addEventListener('mouseleave', () => Tooltip.hide());
         });
 
-        // Attach add button
+        // Attach add button (in header)
         const addBtn = document.getElementById('btn-roadmap-add');
         if (addBtn) {
-            addBtn.addEventListener('click', (e) => {
+            addBtn.onclick = (e) => {
                 e.stopPropagation();
                 addItemOnRoadmap();
-            });
+            };
         }
     }
 
@@ -287,6 +289,8 @@ const Renderer = (() => {
         if (!dragState.moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
         dragState.moved = true;
 
+        const halfCol = colWidth / 2;
+
         if (dragState.type === 'move') {
             dragState.bar.classList.add('dragging');
             const newLeft = dragState.originalLeft + dx;
@@ -297,17 +301,32 @@ const Renderer = (() => {
             dragState.bar.style.opacity = '0.85';
         } else if (dragState.type === 'resize') {
             if (dragState.side === 'right') {
-                const newWidth = Math.max(colWidth, dragState.originalWidth + dx);
+                const newWidth = Math.max(halfCol, dragState.originalWidth + dx);
                 dragState.bar.style.width = newWidth + 'px';
             } else {
                 const newLeft = dragState.originalLeft + dx;
                 const newWidth = dragState.originalWidth - dx;
-                if (newWidth >= colWidth) {
+                if (newWidth >= halfCol) {
                     dragState.bar.style.left = newLeft + 'px';
                     dragState.bar.style.width = newWidth + 'px';
                 }
             }
         }
+    }
+
+    function snapToHalf(pixelPos) {
+        // Snap to nearest half-column boundary
+        const halfCol = colWidth / 2;
+        return Math.round(pixelPos / halfCol) * halfCol;
+    }
+
+    function pixelToSprintHalf(px) {
+        // Convert pixel position to sprint number + half flag
+        const halfCol = colWidth / 2;
+        const halfIdx = Math.round(px / halfCol);
+        const sprintIdx = Math.floor(halfIdx / 2);
+        const isHalf = (halfIdx % 2) === 1;
+        return { sprintIdx, isHalf };
     }
 
     function onMouseUp(e) {
@@ -330,26 +349,43 @@ const Renderer = (() => {
         const seg = item.segments[state.segIdx];
         if (!seg) return;
 
-        if (state.type === 'move') {
-            const grid = document.getElementById('roadmap-grid');
-            const gridRect = grid.getBoundingClientRect();
-            const barLeft = parseFloat(state.bar.style.left);
-            const segSpan = seg.sprintEnd - seg.sprintStart;
+        const halfCol = colWidth / 2;
 
-            // Calculate new sprint start from position
-            let newStartIdx = Math.round(barLeft / colWidth);
-            newStartIdx = Math.max(0, Math.min(sprints.length - 1 - segSpan, newStartIdx));
+        if (state.type === 'move') {
+            const barLeft = parseFloat(state.bar.style.left);
+            // Calculate the current span in half-units to preserve it
+            const startOffset = seg.startHalf ? 0.5 : 0;
+            const endOffset = seg.endHalf ? -0.5 : 0;
+            const currentSpan = seg.sprintEnd - seg.sprintStart + 1 + endOffset - startOffset;
+            const spanHalves = Math.round(currentSpan * 2);
+
+            // Snap start to half-column grid
+            const snappedLeft = snapToHalf(barLeft);
+            const startInfo = pixelToSprintHalf(snappedLeft);
+            let newStartIdx = startInfo.sprintIdx;
+            let newStartHalf = startInfo.isHalf;
+
+            // Clamp start
+            if (newStartIdx < 0) { newStartIdx = 0; newStartHalf = false; }
+
             const newSprintStart = minSprint + newStartIdx;
-            const newSprintEnd = newSprintStart + segSpan;
+
+            // Calculate end from preserved span
+            const endHalves = (newStartIdx * 2 + (newStartHalf ? 1 : 0)) + spanHalves - 1;
+            const endSprintIdx = Math.floor(endHalves / 2);
+            const newEndHalf = (endHalves % 2) === 0; // endHalf means ends at middle
+            const newSprintEnd = minSprint + endSprintIdx;
 
             if (newSprintEnd <= maxSprint) {
-                const offset = newSprintStart - seg.sprintStart;
+                const intOffset = newSprintStart - seg.sprintStart;
                 seg.sprintStart = newSprintStart;
                 seg.sprintEnd = newSprintEnd;
+                seg.startHalf = newStartHalf;
+                seg.endHalf = newEndHalf;
                 // Shift delays with the segment
                 (seg.delays || []).forEach(d => {
-                    d.delaySprintStart = Math.max(newSprintStart, Math.min(newSprintEnd, d.delaySprintStart + offset));
-                    d.delaySprintEnd = Math.max(newSprintStart, Math.min(newSprintEnd, d.delaySprintEnd + offset));
+                    d.delaySprintStart = Math.max(newSprintStart, Math.min(newSprintEnd, d.delaySprintStart + intOffset));
+                    d.delaySprintEnd = Math.max(newSprintStart, Math.min(newSprintEnd, d.delaySprintEnd + intOffset));
                 });
                 State.updateItem(state.itemId, { segments: item.segments });
             } else {
@@ -360,21 +396,33 @@ const Renderer = (() => {
             const barWidth = parseFloat(state.bar.style.width);
 
             if (state.side === 'left') {
-                let newStartIdx = Math.round(barLeft / colWidth);
-                newStartIdx = Math.max(0, newStartIdx);
+                const snappedLeft = snapToHalf(barLeft);
+                const startInfo = pixelToSprintHalf(snappedLeft);
+                let newStartIdx = Math.max(0, startInfo.sprintIdx);
+                const newStartHalf = startInfo.sprintIdx >= 0 ? startInfo.isHalf : false;
                 const newSprintStart = minSprint + newStartIdx;
-                if (newSprintStart <= seg.sprintEnd) {
+                const effEnd = seg.sprintEnd + (seg.endHalf ? -0.5 : 0);
+                const effNewStart = newSprintStart + (newStartHalf ? 0.5 : 0);
+                if (effNewStart <= effEnd) {
                     seg.sprintStart = newSprintStart;
+                    seg.startHalf = newStartHalf;
                     State.updateItem(state.itemId, { segments: item.segments });
                 } else {
                     render();
                 }
             } else {
-                let endIdx = Math.round((barLeft + barWidth) / colWidth) - 1;
-                endIdx = Math.max(seg.sprintStart - minSprint, Math.min(sprints.length - 1, endIdx));
-                const newSprintEnd = minSprint + endIdx;
-                if (newSprintEnd >= seg.sprintStart) {
+                const snappedRight = snapToHalf(barLeft + barWidth);
+                // Right edge: snappedRight is the pixel position of the right edge
+                // Convert to sprint end + endHalf
+                const rightHalves = Math.round(snappedRight / halfCol) - 1;
+                const endSprintIdx = Math.floor(Math.max(0, rightHalves) / 2);
+                const isEndHalf = rightHalves >= 0 && (rightHalves % 2) === 0;
+                const newSprintEnd = minSprint + Math.min(sprints.length - 1, endSprintIdx);
+                const effStart = seg.sprintStart + (seg.startHalf ? 0.5 : 0);
+                const effEnd = newSprintEnd + (isEndHalf ? -0.5 : 0);
+                if (effEnd >= effStart) {
                     seg.sprintEnd = newSprintEnd;
+                    seg.endHalf = isEndHalf;
                     State.updateItem(state.itemId, { segments: item.segments });
                 } else {
                     render();

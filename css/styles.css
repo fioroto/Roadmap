@@ -252,6 +252,11 @@ body {
     z-index: 1;
 }
 
+.sprint-mid-separator {
+    background: transparent;
+    border-left: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
 .sprint-bg-alt {
     position: absolute;
     top: 0;
@@ -374,10 +379,7 @@ body {
 /* ── Roadmap Add Button ──────────────── */
 
 .roadmap-add-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 15;
+    flex-shrink: 0;
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -393,6 +395,7 @@ body {
     justify-content: center;
     box-shadow: var(--shadow-md);
     transition: background var(--transition), transform var(--transition);
+    margin-left: 12px;
 }
 
 .roadmap-add-btn:hover {

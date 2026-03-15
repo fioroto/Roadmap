@@ -31,7 +31,9 @@ const Tooltip = (() => {
         html += '</div>';
 
         html += '<div class="tooltip-detail">';
-        html += `<div class="tooltip-row"><span class="tooltip-label">Segmento</span><span class="tooltip-value">Sprint ${seg.sprintStart} → Sprint ${seg.sprintEnd}</span></div>`;
+        const startLabel = `Sprint ${seg.sprintStart}${seg.startHalf ? ' (meio)' : ''}`;
+        const endLabel = `Sprint ${seg.sprintEnd}${seg.endHalf ? ' (meio)' : ''}`;
+        html += `<div class="tooltip-row"><span class="tooltip-label">Segmento</span><span class="tooltip-value">${startLabel} → ${endLabel}</span></div>`;
 
         if (seg.delays && seg.delays.length > 0) {
             html += '<div class="tooltip-row"><span class="tooltip-label">Delays</span><span class="tooltip-value">';
