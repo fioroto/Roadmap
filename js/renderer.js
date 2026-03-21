@@ -93,6 +93,7 @@ const Renderer = (() => {
         const minSprint = sprints[0].number;
         const cfgItemTypes = State.getItemTypes();
         const cfgStatusTypes = State.getStatusTypes();
+        const teamMembers = State.getTeamMembers();
 
         trackEntries.forEach(entry => {
             const item = entry.item;
@@ -123,8 +124,12 @@ const Renderer = (() => {
 
                 const dataAttrs = `data-item-id="${item.id}" data-segment-index="${segIdx}" data-track="${track}"`;
 
+                const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
+                const memberAvatarHtml = member ? `<div class="item-bar-avatar" style="background:${member.color};color:${State.getContrastColor(member.color)};" title="${escapeHtml(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
+
                 html += `<div class="${barClass}" ${dataAttrs} style="left:${left}px; width:${width}px; top:${top}px; background:${typeColor.bg}; color:${typeColor.text}; border-color:${typeColor.border};">`;
                 html += `<div class="resize-handle resize-handle-left" data-item-id="${item.id}" data-segment-index="${segIdx}" data-side="left"></div>`;
+                html += memberAvatarHtml;
                 html += `<span class="item-title">${escapeHtml(item.title)}</span>`;
                 html += statusHtml;
 

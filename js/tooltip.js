@@ -18,6 +18,9 @@ const Tooltip = (() => {
         const typeLabel = typeEntry ? typeEntry.label : item.type;
         const statusEntry = cfgStatuses.find(s => s.value === item.status);
 
+        const teamMembers = State.getTeamMembers();
+        const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
+
         let html = `<div class="tooltip-title">${escapeHtml(item.title)}</div>`;
 
         html += '<div class="tooltip-meta">';
@@ -27,6 +30,9 @@ const Tooltip = (() => {
         }
         if (statusEntry && statusEntry.value !== '') {
             html += `<span class="tooltip-status">${escapeHtml(statusEntry.label)}</span>`;
+        }
+        if (member) {
+            html += `<span class="tooltip-member" style="background:${member.color};color:${State.getContrastColor(member.color)};">${escapeHtml(member.name)}</span>`;
         }
         html += '</div>';
 

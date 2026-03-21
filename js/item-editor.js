@@ -1,34 +1,77 @@
 const ItemEditor = (() => {
     let selectedItemId = null;
+    let filterMemberId = '';
 
     function init() {
         document.getElementById('btn-add-item').addEventListener('click', addNewItem);
         State.on('state:changed', renderList);
         State.on('config:changed', () => {
+            renderMemberFilter();
             if (selectedItemId) renderForm(selectedItemId);
         });
         State.on('item:select', (id) => selectItem(id));
+        renderMemberFilter();
         renderList();
+    }
+
+    function renderMemberFilter() {
+        const container = document.getElementById('member-filter-container');
+        if (!container) return;
+        const teamMembers = State.getTeamMembers();
+        if (!teamMembers.length) {
+            container.innerHTML = '';
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        container.innerHTML = `
+            <label style="font-size:11px;color:var(--text-muted);white-space:nowrap;">Filtrar:</label>
+            <select id="filter-member" style="flex:1;padding:4px 6px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:11px;font-family:var(--font-family);">
+                <option value="">Todos</option>
+                <option value="__none__" ${filterMemberId === '__none__' ? 'selected' : ''}>Sem responsável</option>
+                ${teamMembers.map(m => `<option value="${m.id}" ${filterMemberId === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+            </select>
+        `;
+        container.querySelector('#filter-member').addEventListener('change', (e) => {
+            filterMemberId = e.target.value;
+            renderList();
+        });
     }
 
     function renderList() {
         const listEl = document.getElementById('item-list');
-        const items = State.getItems();
+        let items = State.getItems();
 
         if (!items.length) {
             listEl.innerHTML = '<div class="no-items-msg">Nenhum item cadastrado. Clique em + para adicionar.</div>';
             return;
         }
 
+        // Apply member filter
+        if (filterMemberId === '__none__') {
+            items = items.filter(i => !i.responsavel);
+        } else if (filterMemberId) {
+            items = items.filter(i => i.responsavel === filterMemberId);
+        }
+
+        if (!items.length) {
+            listEl.innerHTML = '<div class="no-items-msg">Nenhum item encontrado para este filtro.</div>';
+            return;
+        }
+
         const cfgTypes = State.getItemTypes();
+        const teamMembers = State.getTeamMembers();
         listEl.innerHTML = items.map(item => {
             const typeEntry = cfgTypes.find(t => t.value === item.type);
             const color = typeEntry ? typeEntry.color : '#6b7280';
             const selected = item.id === selectedItemId ? ' selected' : '';
+            const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
+            const memberHtml = member ? `<div class="member-avatar-tiny" style="background:${member.color};color:${State.getContrastColor(member.color)};" title="${escapeHtml(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
             return `
         <div class="item-card${selected}" data-id="${item.id}">
           <div class="item-card-dot" style="background:${color}"></div>
           <span class="item-card-title">${escapeHtml(item.title)}</span>
+          ${memberHtml}
           <div class="item-card-actions">
             <button data-action="edit" data-id="${item.id}" title="Editar">✎</button>
             <button data-action="delete" data-id="${item.id}" title="Excluir">✕</button>
@@ -112,6 +155,7 @@ const ItemEditor = (() => {
         const sprintOptions = sprints.map(s => `<option value="${s.number}">Sprint ${s.number}</option>`).join('');
         const cfgTypes = State.getItemTypes();
         const cfgStatuses = State.getStatusTypes();
+        const teamMembers = State.getTeamMembers();
 
         let html = `
       <div class="config-section-title">Editar Item</div>
@@ -133,6 +177,14 @@ const ItemEditor = (() => {
           </select>
         </div>
       </div>
+      ${teamMembers.length ? `
+      <div class="form-group">
+        <label>Responsável</label>
+        <select id="edit-responsavel">
+          <option value="" ${!item.responsavel ? 'selected' : ''}>Sem responsável</option>
+          ${teamMembers.map(m => `<option value="${escapeAttr(m.id)}" ${item.responsavel === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+        </select>
+      </div>` : ''}
       <div class="checkbox-group">
         <input type="checkbox" id="edit-intruder" ${item.intruder ? 'checked' : ''}>
         <label for="edit-intruder">Intruder</label>
@@ -205,10 +257,12 @@ const ItemEditor = (() => {
         // Bind events
         document.getElementById('btn-save-item').addEventListener('click', () => saveItem(id));
 
-        // Auto-save on status/type/intruder change
+        // Auto-save on status/type/intruder/responsavel change
         document.getElementById('edit-status').addEventListener('change', () => saveItem(id));
         document.getElementById('edit-type').addEventListener('change', () => saveItem(id));
         document.getElementById('edit-intruder').addEventListener('change', () => saveItem(id));
+        const responsavelSelect = document.getElementById('edit-responsavel');
+        if (responsavelSelect) responsavelSelect.addEventListener('change', () => saveItem(id));
 
         document.getElementById('btn-add-segment').addEventListener('click', () => {
             const defaultSprint = sprints.length ? sprints[0].number : 1;
@@ -251,10 +305,12 @@ const ItemEditor = (() => {
         if (!item) return;
 
         const formEl = document.getElementById('item-form');
+        const responsavelEl = document.getElementById('edit-responsavel');
         const updates = {
             title: document.getElementById('edit-title').value,
             type: document.getElementById('edit-type').value,
             status: document.getElementById('edit-status').value,
+            responsavel: responsavelEl ? responsavelEl.value : (item.responsavel || ''),
             intruder: document.getElementById('edit-intruder').checked,
             observacao: document.getElementById('edit-observacao').value,
             segments: item.segments.map((seg, segIdx) => {
