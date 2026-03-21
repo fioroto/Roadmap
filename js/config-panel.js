@@ -210,12 +210,64 @@ const ConfigPanel = (() => {
                 `).join('')}
             </div>
             <button class="btn btn-secondary btn-sm btn-block" id="btn-add-status-type">+ Tipo de Status</button>
+
+            <div class="editor-divider"></div>
+            <div class="config-section-title">Membros do Time</div>
+            <div class="type-list" id="team-members-list">
+                ${(State.getTeamMembers()).map((m, i) => `
+                    <div class="type-row">
+                        <div class="member-avatar-small" style="background:${escapeAttr(m.color)};color:${State.getContrastColor(m.color)};">${escapeHtml((m.name || '?')[0].toUpperCase())}</div>
+                        <input type="text" class="member-name-input" value="${escapeAttr(m.name)}" data-idx="${i}" placeholder="Nome">
+                        <input type="color" class="member-color-picker" value="${escapeAttr(m.color)}" data-idx="${i}" style="width:32px;height:28px;padding:2px;border-radius:4px;cursor:pointer;flex-shrink:0;">
+                        <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="member">✕</button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-member">+ Membro</button>
         `;
 
         bindTypeManagementEvents(container, itemTypes, statusTypes);
     }
 
     function bindTypeManagementEvents(container, itemTypes, statusTypes) {
+        const teamMembers = State.getTeamMembers();
+
+        // Team member events
+        container.querySelector('#btn-add-member').addEventListener('click', () => {
+            const colors = ['#6366f1', '#ec4899', '#f97316', '#14b8a6', '#8b5cf6', '#ef4444', '#22c55e', '#3b82f6'];
+            const color = colors[teamMembers.length % colors.length];
+            const newMembers = [...teamMembers, { id: State.generateTypeId('mb'), name: 'Novo Membro', color }];
+            State.setConfig({ teamMembers: newMembers });
+        });
+
+        container.querySelectorAll('.member-name-input').forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(typeDebounceTimer);
+                typeDebounceTimer = setTimeout(() => {
+                    const idx = parseInt(input.dataset.idx, 10);
+                    _skipTypeRerender = true;
+                    State.setConfig({ teamMembers: teamMembers.map((m, i) => i === idx ? { ...m, name: input.value } : m) });
+                    _skipTypeRerender = false;
+                }, 300);
+            });
+        });
+
+        container.querySelectorAll('.member-color-picker').forEach(picker => {
+            picker.addEventListener('input', () => {
+                const idx = parseInt(picker.dataset.idx, 10);
+                _skipTypeRerender = true;
+                State.setConfig({ teamMembers: teamMembers.map((m, i) => i === idx ? { ...m, color: picker.value } : m) });
+                _skipTypeRerender = false;
+            });
+            picker.addEventListener('change', () => renderTypeManagement());
+        });
+
+        container.querySelectorAll('[data-kind="member"].type-delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.idx, 10);
+                State.setConfig({ teamMembers: teamMembers.filter((_, i) => i !== idx) });
+            });
+        });
         container.querySelector('#btn-add-item-type').addEventListener('click', () => {
             const newTypes = [...itemTypes, {
                 value: State.generateTypeId('it'),

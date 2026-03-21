@@ -22,7 +22,8 @@ const State = (() => {
             { value: 'EmAndamento', label: 'Em Andamento', icon: '▶' },
             { value: 'Finalizado', label: 'Finalizado', icon: '✓' },
             { value: 'PendenteSubida', label: 'Pendente de Subida', icon: '⏳' }
-        ]
+        ],
+        teamMembers: []
     };
 
     let state = { config: { ...defaultConfig }, items: [] };
@@ -41,6 +42,7 @@ const State = (() => {
     function getState() { return state; }
     function getItemTypes() { return state.config.itemTypes || defaultConfig.itemTypes; }
     function getStatusTypes() { return state.config.statusTypes || defaultConfig.statusTypes; }
+    function getTeamMembers() { return state.config.teamMembers || []; }
 
     function setConfig(cfg) {
         state.config = { ...state.config, ...cfg };
@@ -94,6 +96,7 @@ const State = (() => {
             type: item.type || firstType,
             intruder: !!item.intruder,
             status,
+            responsavel: item.responsavel || '',
             observacao: item.observacao || '',
             segments: (item.segments || []).map(seg => ({
                 sprintStart: seg.sprintStart,
@@ -268,6 +271,7 @@ const State = (() => {
                     type: row.type || 'EV',
                     intruder: row.intruder === 'true' || row.intruder === '1',
                     status: row.status || '',
+                    responsavel: row.responsavel || '',
                     observacao: row.observacao || '',
                     segments: []
                 };
@@ -332,7 +336,7 @@ const State = (() => {
         exportJSON, importJSON, importConfigFromTSV,
         importConfigFromCSV, importItemsFromCSV,
         saveToFileSystem, loadFromFileSystem,
-        getItemTypes, getStatusTypes,
+        getItemTypes, getStatusTypes, getTeamMembers,
         generateTypeId, getContrastColor, darkenColor,
         on, emit
     };
