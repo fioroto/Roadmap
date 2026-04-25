@@ -1,41 +1,79 @@
 const ItemEditor = (() => {
     let selectedItemId = null;
     let filterMemberId = '';
+    let filterTypeValue = '';
+    let filterStatusValue = '__all__';
 
     function init() {
         document.getElementById('btn-add-item').addEventListener('click', addNewItem);
         State.on('state:changed', renderList);
         State.on('config:changed', () => {
-            renderMemberFilter();
+            renderFilters();
             if (selectedItemId) renderForm(selectedItemId);
         });
         State.on('item:select', (id) => selectItem(id));
-        renderMemberFilter();
+        renderFilters();
         renderList();
     }
 
-    function renderMemberFilter() {
+    function renderFilters() {
         const container = document.getElementById('member-filter-container');
         if (!container) return;
         const teamMembers = State.getTeamMembers();
-        if (!teamMembers.length) {
-            container.innerHTML = '';
-            container.style.display = 'none';
-            return;
-        }
+        const itemTypes = State.getItemTypes();
+        const statusTypes = State.getStatusTypes();
+
+        const filterCommon = 'flex:1;min-width:0;padding:4px 6px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:11px;font-family:var(--font-family);';
+
         container.style.display = 'flex';
+        container.style.flexWrap = 'wrap';
+        container.style.gap = '6px';
         container.innerHTML = `
-            <label style="font-size:11px;color:var(--text-muted);white-space:nowrap;">Filtrar:</label>
-            <select id="filter-member" style="flex:1;padding:4px 6px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:11px;font-family:var(--font-family);">
-                <option value="">Todos</option>
-                <option value="__none__" ${filterMemberId === '__none__' ? 'selected' : ''}>Sem responsável</option>
-                ${teamMembers.map(m => `<option value="${m.id}" ${filterMemberId === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+            <label style="font-size:11px;color:var(--text-muted);white-space:nowrap;width:100%;">Filtros</label>
+            <select id="filter-type" style="${filterCommon}">
+                <option value="">Todos os tipos</option>
+                ${itemTypes.map(t => `<option value="${escapeAttr(t.value)}" ${filterTypeValue === t.value ? 'selected' : ''}>${escapeHtml(t.label)}</option>`).join('')}
             </select>
+            <select id="filter-status" style="${filterCommon}">
+                <option value="__all__" ${filterStatusValue === '__all__' ? 'selected' : ''}>Todos os status</option>
+                <option value="" ${filterStatusValue === '' ? 'selected' : ''}>Sem status</option>
+                ${statusTypes.filter(s => s.value !== '').map(s => `<option value="${escapeAttr(s.value)}" ${filterStatusValue === s.value ? 'selected' : ''}>${escapeHtml(s.label)}</option>`).join('')}
+            </select>
+            ${teamMembers.length ? `
+            <select id="filter-member" style="${filterCommon}">
+                <option value="__all__" ${!filterMemberId ? 'selected' : ''}>Todos responsáveis</option>
+                <option value="__none__" ${filterMemberId === '__none__' ? 'selected' : ''}>Sem responsável</option>
+                ${teamMembers.map(m => `<option value="${escapeAttr(m.id)}" ${filterMemberId === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+            </select>` : ''}
+            ${(filterTypeValue || filterStatusValue !== '__all__' || filterMemberId) ? `<button id="filter-clear" class="btn btn-secondary btn-sm" style="flex-shrink:0;">Limpar</button>` : ''}
         `;
-        container.querySelector('#filter-member').addEventListener('change', (e) => {
-            filterMemberId = e.target.value;
+
+        const typeSel = container.querySelector('#filter-type');
+        const statusSel = container.querySelector('#filter-status');
+        const memberSel = container.querySelector('#filter-member');
+        const clearBtn = container.querySelector('#filter-clear');
+
+        if (typeSel) typeSel.addEventListener('change', () => { filterTypeValue = typeSel.value; renderList(); renderFilters(); });
+        if (statusSel) statusSel.addEventListener('change', () => { filterStatusValue = statusSel.value; renderList(); renderFilters(); });
+        if (memberSel) memberSel.addEventListener('change', () => { filterMemberId = memberSel.value === '__all__' ? '' : memberSel.value; renderList(); renderFilters(); });
+        if (clearBtn) clearBtn.addEventListener('click', () => {
+            filterTypeValue = '';
+            filterStatusValue = '__all__';
+            filterMemberId = '';
             renderList();
+            renderFilters();
         });
+    }
+
+    function applyFilters(items) {
+        let result = items;
+        if (filterTypeValue) result = result.filter(i => i.type === filterTypeValue);
+        if (filterStatusValue !== '__all__' && filterStatusValue !== undefined) {
+            result = result.filter(i => (i.status || '') === filterStatusValue);
+        }
+        if (filterMemberId === '__none__') result = result.filter(i => !i.responsavel);
+        else if (filterMemberId) result = result.filter(i => i.responsavel === filterMemberId);
+        return result;
     }
 
     function renderList() {
@@ -47,12 +85,7 @@ const ItemEditor = (() => {
             return;
         }
 
-        // Apply member filter
-        if (filterMemberId === '__none__') {
-            items = items.filter(i => !i.responsavel);
-        } else if (filterMemberId) {
-            items = items.filter(i => i.responsavel === filterMemberId);
-        }
+        items = applyFilters(items);
 
         if (!items.length) {
             listEl.innerHTML = '<div class="no-items-msg">Nenhum item encontrado para este filtro.</div>';
