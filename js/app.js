@@ -1,3 +1,13 @@
+// ─── UI theme (auto/light/dark) ───────────────────────
+// Loaded synchronously to avoid a flash of wrong theme on initial paint.
+(function applyInitialTheme() {
+    const THEME_KEY = 'roadmap-planner-theme';
+    let theme;
+    try { theme = localStorage.getItem(THEME_KEY); } catch (e) { /* localStorage blocked */ }
+    if (theme !== 'light' && theme !== 'dark') theme = 'auto';
+    document.documentElement.setAttribute('data-theme', theme);
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     State.load();
 
@@ -75,6 +85,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     applyColors(State.getConfig());
+
+    // ─── Theme toggle wiring ─────────────────────────
+    const THEME_KEY = 'roadmap-planner-theme';
+    function setTheme(theme) {
+        if (theme !== 'auto' && theme !== 'light' && theme !== 'dark') theme = 'auto';
+        document.documentElement.setAttribute('data-theme', theme);
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ }
+        document.querySelectorAll('.theme-toggle button').forEach(b => {
+            b.classList.toggle('active', b.dataset.theme === theme);
+        });
+    }
+    const initialTheme = document.documentElement.getAttribute('data-theme') || 'auto';
+    setTheme(initialTheme);
+    document.querySelectorAll('.theme-toggle button').forEach(btn => {
+        btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+    });
 
     Renderer.render();
 
