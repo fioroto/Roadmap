@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ItemEditor.init();
     ImportExport.init();
 
+    // If the URL contains a #share=... hash, offer to load it (overrides loaded state).
+    if (typeof ImportExport.tryLoadFromHash === 'function') ImportExport.tryLoadFromHash();
+
     State.on('state:changed', () => Renderer.render());
     State.on('config:changed', () => Renderer.render());
     State.on('item:select', (id) => Renderer.setSelectedItem(id));

@@ -13,6 +13,9 @@ const ImportExport = (() => {
         document.getElementById('btn-export-html').addEventListener('click', exportHTMLWithPNG);
         document.getElementById('btn-export-png').addEventListener('click', exportPNGOnly);
 
+        const btnShare = document.getElementById('btn-share-url');
+        if (btnShare) btnShare.addEventListener('click', shareViaURL);
+
         document.getElementById('btn-save-fs').addEventListener('click', async () => {
             try {
                 const ok = await State.saveToFileSystem();
@@ -301,7 +304,63 @@ const ImportExport = (() => {
         return div.innerHTML;
     }
 
-    return { init };
+    // ─── Share via URL hash ─────────────────────────────
+    function encodeStateToHash(jsonString) {
+        // base64url: standard base64 with +/= replaced by -_ and stripped padding.
+        const b64 = btoa(unescape(encodeURIComponent(jsonString)));
+        return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function decodeHashToJSON(hashValue) {
+        let b64 = hashValue.replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4) b64 += '=';
+        return decodeURIComponent(escape(atob(b64)));
+    }
+
+    function shareViaURL() {
+        const statusEl = document.getElementById('share-url-status');
+        try {
+            const encoded = encodeStateToHash(State.exportJSON());
+            const url = `${location.origin}${location.pathname}#share=${encoded}`;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast('Link copiado para a área de transferência', 'success');
+                    if (statusEl) statusEl.textContent = `Tamanho: ${url.length} caracteres`;
+                }, () => {
+                    if (statusEl) statusEl.textContent = url;
+                    showToast('Não foi possível copiar; o link aparece abaixo do botão', 'error');
+                });
+            } else {
+                if (statusEl) statusEl.textContent = url;
+                showToast('Copie o link abaixo do botão', 'success');
+            }
+        } catch (e) {
+            showToast('Erro ao gerar link: ' + e.message, 'error');
+        }
+    }
+
+    function tryLoadFromHash() {
+        const hash = location.hash || '';
+        const match = hash.match(/^#share=(.+)$/);
+        if (!match) return false;
+
+        try {
+            const json = decodeHashToJSON(match[1]);
+            const proceed = confirm('Esta página tem um roadmap compartilhado no link. Carregar e substituir o roadmap atual?');
+            if (proceed) {
+                State.importJSON(json);
+                showToast('Roadmap carregado do link compartilhado', 'success');
+            }
+        } catch (e) {
+            showToast('Link compartilhado inválido: ' + e.message, 'error');
+        }
+        // Always strip the hash so reloads don't keep prompting.
+        history.replaceState(null, '', location.pathname + location.search);
+        return true;
+    }
+
+    return { init, tryLoadFromHash };
 })();
 
 function showToast(message, type) {
