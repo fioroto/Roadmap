@@ -23,7 +23,7 @@
                 <span id="roadmap-subtitle" class="roadmap-subtitle">Squad Ativação</span>
             </div>
             <div id="roadmap-legend" class="roadmap-legend"></div>
-            <button class="roadmap-add-btn" id="btn-roadmap-add" title="Adicionar item ao roadmap" aria-label="Adicionar item ao roadmap">+</button>
+            <button class="roadmap-add-btn" id="btn-roadmap-add" data-i18n-title="header.add_item" data-i18n-aria-label="header.add_item">+</button>
         </header>
 
         <!-- ─── Body ─── -->
@@ -35,68 +35,75 @@
             </div>
 
             <!-- Panel Toggle -->
-            <button class="panel-toggle" id="btn-toggle-panel" title="Abrir/Fechar painel" aria-label="Abrir ou fechar painel lateral" aria-expanded="true" aria-controls="side-panel">◀</button>
+            <button class="panel-toggle" id="btn-toggle-panel" data-i18n-title="header.toggle_panel" data-i18n-aria-label="header.toggle_panel" aria-expanded="true" aria-controls="side-panel">◀</button>
 
             <!-- Side Panel -->
             <aside class="side-panel" id="side-panel">
                 <div class="panel-tabs" role="tablist">
-                    <button class="panel-tab active" data-target="section-config" role="tab" aria-selected="true" aria-controls="section-config">Config</button>
-                    <button class="panel-tab" data-target="section-items" role="tab" aria-selected="false" aria-controls="section-items">Itens</button>
-                    <button class="panel-tab" data-target="section-import" role="tab" aria-selected="false" aria-controls="section-import">Import/Export</button>
+                    <button class="panel-tab active" data-target="section-config" role="tab" aria-selected="true" aria-controls="section-config" data-i18n="tabs.config">Config</button>
+                    <button class="panel-tab" data-target="section-items" role="tab" aria-selected="false" aria-controls="section-items" data-i18n="tabs.items">Itens</button>
+                    <button class="panel-tab" data-target="section-import" role="tab" aria-selected="false" aria-controls="section-import" data-i18n="tabs.import_export">Import/Export</button>
                 </div>
 
                 <div class="panel-content">
 
                     <!-- ─── Config Section ─── -->
                     <div id="section-config" class="panel-section active">
-                        <div class="config-section-title">Aparência da interface</div>
+                        <div class="config-section-title" data-i18n="theme.section">Aparência da interface</div>
                         <div class="form-group">
-                            <label>Tema da UI</label>
-                            <div class="theme-toggle" role="group" aria-label="Tema da interface">
-                                <button type="button" data-theme="auto">Auto</button>
-                                <button type="button" data-theme="light">Claro</button>
-                                <button type="button" data-theme="dark">Escuro</button>
+                            <label data-i18n="theme.label">Tema da UI</label>
+                            <div class="theme-toggle" role="group" data-i18n-aria-label="theme.aria">
+                                <button type="button" data-theme="auto" data-i18n="theme.auto">Auto</button>
+                                <button type="button" data-theme="light" data-i18n="theme.light">Claro</button>
+                                <button type="button" data-theme="dark" data-i18n="theme.dark">Escuro</button>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-locale" data-i18n="lang.label">Idioma</label>
+                            <select id="cfg-locale">
+                                <option value="pt-BR">Português (Brasil)</option>
+                                <option value="en-US">English (US)</option>
+                            </select>
                         </div>
                         <div class="editor-divider"></div>
 
-                        <div class="config-section-title">Configuração do Roadmap</div>
+                        <div class="config-section-title" data-i18n="config.roadmap_title">Configuração do Roadmap</div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="cfg-periodo">Período</label>
+                                <label for="cfg-periodo" data-i18n="config.periodo">Período</label>
                                 <input type="text" id="cfg-periodo" placeholder="Q1/2026">
                             </div>
                             <div class="form-group">
-                                <label for="cfg-squad">Squad</label>
+                                <label for="cfg-squad" data-i18n="config.squad">Squad</label>
                                 <input type="text" id="cfg-squad" placeholder="Squad Ativação">
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="cfg-dataInicio">Data Início</label>
+                                <label for="cfg-dataInicio" data-i18n="config.dataInicio">Data Início</label>
                                 <input type="date" id="cfg-dataInicio">
                             </div>
                             <div class="form-group">
-                                <label for="cfg-dataFim">Data Fim</label>
+                                <label for="cfg-dataFim" data-i18n="config.dataFim">Data Fim</label>
                                 <input type="date" id="cfg-dataFim">
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="cfg-diasSprint">Dias/Sprint</label>
+                                <label for="cfg-diasSprint" data-i18n="config.diasSprint">Dias/Sprint</label>
                                 <input type="number" id="cfg-diasSprint" min="1" max="90" value="14">
                             </div>
                             <div class="form-group">
-                                <label for="cfg-sprintStartNumber">Sprint Inicial N°</label>
+                                <label for="cfg-sprintStartNumber" data-i18n="config.sprintStartNumber">Sprint Inicial N°</label>
                                 <input type="number" id="cfg-sprintStartNumber" min="1" value="115">
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label for="cfg-bgColor">Cor de Fundo do Roadmap</label>
+                            <label for="cfg-bgColor" data-i18n="config.bgColor">Cor de Fundo do Roadmap</label>
                             <div style="display:flex; gap:8px; align-items:center;">
                                 <input type="color" id="cfg-bgColor" value="#0f172a"
                                     style="width:40px; height:32px; padding:2px; cursor:pointer;">
@@ -106,7 +113,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="cfg-headerColor">Cor do Header</label>
+                            <label for="cfg-headerColor" data-i18n="config.headerColor">Cor do Header</label>
                             <div style="display:flex; gap:8px; align-items:center;">
                                 <input type="color" id="cfg-headerColor" value="#1e293b"
                                     style="width:40px; height:32px; padding:2px; cursor:pointer;">
@@ -116,7 +123,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="cfg-monthBandColor">Cor da Faixa de Meses</label>
+                            <label for="cfg-monthBandColor" data-i18n="config.monthBandColor">Cor da Faixa de Meses</label>
                             <div style="display:flex; gap:8px; align-items:center;">
                                 <input type="color" id="cfg-monthBandColor" value="#1e293b"
                                     style="width:40px; height:32px; padding:2px; cursor:pointer;">
@@ -126,7 +133,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="cfg-sprintBandColor">Cor da Faixa de Sprints</label>
+                            <label for="cfg-sprintBandColor" data-i18n="config.sprintBandColor">Cor da Faixa de Sprints</label>
                             <div style="display:flex; gap:8px; align-items:center;">
                                 <input type="color" id="cfg-sprintBandColor" value="#334155"
                                     style="width:40px; height:32px; padding:2px; cursor:pointer;">
@@ -136,8 +143,7 @@
                         </div>
 
                         <div class="btn-group">
-                            <button class="btn btn-primary btn-block" id="btn-apply-config">Aplicar
-                                Configuração</button>
+                            <button class="btn btn-primary btn-block" id="btn-apply-config" data-i18n="config.apply">Aplicar Configuração</button>
                         </div>
 
                         <!-- Type management (populated by config-panel.js) -->
@@ -148,9 +154,8 @@
                     <div id="section-items" class="panel-section">
                         <div
                             style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                            <div class="config-section-title" style="margin-bottom:0; border:none; padding:0;">Itens do
-                                Roadmap</div>
-                            <button class="btn btn-primary btn-sm" id="btn-add-item">+ Novo Item</button>
+                            <div class="config-section-title" style="margin-bottom:0; border:none; padding:0;" data-i18n="items.section_title">Itens do Roadmap</div>
+                            <button class="btn btn-primary btn-sm" id="btn-add-item" data-i18n="items.add_new">+ Novo Item</button>
                         </div>
 
                         <div id="member-filter-container" style="align-items:center; gap:8px; margin-bottom:10px;"></div>
@@ -160,7 +165,7 @@
                         <div class="editor-divider"></div>
 
                         <div id="item-form">
-                            <div class="no-items-msg">Selecione um item para editar</div>
+                            <div class="no-items-msg" data-i18n="items.select_to_edit">Selecione um item para editar</div>
                         </div>
                     </div>
 
@@ -169,80 +174,75 @@
 
                         <!-- Share via URL -->
                         <div class="import-card">
-                            <div class="import-card-title">Compartilhar via link</div>
-                            <div class="import-card-desc">Gera uma URL com o roadmap completo embutido no hash (sem servidor). Cole no navegador para abrir.</div>
+                            <div class="import-card-title" data-i18n="ie.share_title">Compartilhar via link</div>
+                            <div class="import-card-desc" data-i18n="ie.share_desc">Gera uma URL com o roadmap completo embutido no hash (sem servidor). Cole no navegador para abrir.</div>
                             <div class="btn-group" style="margin-top:0;">
-                                <button class="btn btn-primary btn-sm" id="btn-share-url">Copiar link</button>
+                                <button class="btn btn-primary btn-sm" id="btn-share-url" data-i18n="ie.share_copy">Copiar link</button>
                             </div>
                             <div id="share-url-status" style="font-size:11px;color:var(--text-muted);margin-top:6px;"></div>
                         </div>
 
                         <!-- HTML + PNG Export -->
                         <div class="import-card">
-                            <div class="import-card-title">Exportar HTML + Imagem</div>
-                            <div class="import-card-desc">Exporte o roadmap como HTML com imagem PNG na mesma pasta. A imagem é referenciada com caminho relativo.</div>
+                            <div class="import-card-title" data-i18n="ie.html_title">Exportar HTML + Imagem</div>
+                            <div class="import-card-desc" data-i18n="ie.html_desc">Exporte o roadmap como HTML com imagem PNG na mesma pasta. A imagem é referenciada com caminho relativo.</div>
                             <div class="btn-group" style="margin-top:0;">
-                                <button class="btn btn-primary btn-sm" id="btn-export-html">Exportar HTML + PNG</button>
-                                <button class="btn btn-secondary btn-sm" id="btn-export-png">Exportar só PNG</button>
+                                <button class="btn btn-primary btn-sm" id="btn-export-html" data-i18n="ie.html_btn">Exportar HTML + PNG</button>
+                                <button class="btn btn-secondary btn-sm" id="btn-export-png" data-i18n="ie.png_btn">Exportar só PNG</button>
                             </div>
                         </div>
 
                         <!-- JSON -->
                         <div class="import-card">
-                            <div class="import-card-title">JSON</div>
-                            <div class="import-card-desc">Exporte ou importe o roadmap completo em formato JSON.</div>
+                            <div class="import-card-title" data-i18n="ie.json_title">JSON</div>
+                            <div class="import-card-desc" data-i18n="ie.json_desc">Exporte ou importe o roadmap completo em formato JSON.</div>
                             <div class="btn-group" style="margin-top:0;">
-                                <button class="btn btn-primary btn-sm" id="btn-export-json">Exportar JSON</button>
-                                <button class="btn btn-secondary btn-sm" id="btn-import-json">Importar JSON</button>
+                                <button class="btn btn-primary btn-sm" id="btn-export-json" data-i18n="ie.json_export">Exportar JSON</button>
+                                <button class="btn btn-secondary btn-sm" id="btn-import-json" data-i18n="ie.json_import">Importar JSON</button>
                                 <input type="file" id="file-json" accept=".json" style="display:none">
                             </div>
                         </div>
 
                         <!-- File System API -->
                         <div class="import-card">
-                            <div class="import-card-title">Salvar / Abrir Arquivo</div>
-                            <div class="import-card-desc">Use a API do navegador para salvar/abrir arquivos diretamente.
-                            </div>
+                            <div class="import-card-title" data-i18n="ie.fs_title">Salvar / Abrir Arquivo</div>
+                            <div class="import-card-desc" data-i18n="ie.fs_desc">Use a API do navegador para salvar/abrir arquivos diretamente.</div>
                             <div class="btn-group" style="margin-top:0;">
-                                <button class="btn btn-primary btn-sm" id="btn-save-fs">Salvar no Disco</button>
-                                <button class="btn btn-secondary btn-sm" id="btn-load-fs">Abrir do Disco</button>
+                                <button class="btn btn-primary btn-sm" id="btn-save-fs" data-i18n="ie.fs_save">Salvar no Disco</button>
+                                <button class="btn btn-secondary btn-sm" id="btn-load-fs" data-i18n="ie.fs_load">Abrir do Disco</button>
                             </div>
                             <div class="editor-divider"></div>
                             <div class="checkbox-group">
                                 <input type="checkbox" id="cfg-autosave">
-                                <label for="cfg-autosave">Auto-save automático</label>
+                                <label for="cfg-autosave" data-i18n="ie.autosave_label">Auto-save automático</label>
                             </div>
                             <div class="form-group">
-                                <label for="cfg-autosave-interval">Intervalo (segundos)</label>
+                                <label for="cfg-autosave-interval" data-i18n="ie.autosave_interval">Intervalo (segundos)</label>
                                 <input type="number" id="cfg-autosave-interval" value="30" min="5" max="600"
                                     style="width:100px;">
                             </div>
                             <div style="font-size:11px; color:var(--text-muted);">
-                                Status: <span id="autosave-status">Desativado</span>
+                                <span data-i18n="ie.autosave_status_label">Status:</span> <span id="autosave-status" data-i18n="ie.autosave_off">Desativado</span>
                             </div>
                         </div>
 
                         <!-- Colar do Excel -->
                         <div class="import-card">
-                            <div class="import-card-title">Importar via Colar (Excel/Sheets)</div>
-                            <div class="import-card-desc">Cole dados copiados de uma planilha. Aceita formato
-                                chave→valor ou cabeçalho+valores (TSV).</div>
-                            <textarea id="paste-area" class="paste-area" placeholder="Cole os dados aqui..."></textarea>
-                            <button class="btn btn-primary btn-sm btn-block" id="btn-paste-apply">Aplicar Dados
-                                Colados</button>
+                            <div class="import-card-title" data-i18n="ie.paste_title">Importar via Colar (Excel/Sheets)</div>
+                            <div class="import-card-desc" data-i18n="ie.paste_desc">Cole dados copiados de uma planilha. Aceita formato chave→valor ou cabeçalho+valores (TSV).</div>
+                            <textarea id="paste-area" class="paste-area" data-i18n-placeholder="ie.paste_placeholder" placeholder="Cole os dados aqui..."></textarea>
+                            <button class="btn btn-primary btn-sm btn-block" id="btn-paste-apply" data-i18n="ie.paste_apply">Aplicar Dados Colados</button>
                         </div>
 
                         <!-- CSV -->
                         <div class="import-card">
-                            <div class="import-card-title">Carregar CSV</div>
-                            <div class="import-card-desc">Importe um arquivo CSV com dados de configuração ou itens.
-                            </div>
+                            <div class="import-card-title" data-i18n="ie.csv_title">Carregar CSV</div>
+                            <div class="import-card-desc" data-i18n="ie.csv_desc">Importe um arquivo CSV com dados de configuração ou itens.</div>
                             <div class="radio-group">
-                                <label><input type="radio" name="csv-type" value="config" checked> Configuração</label>
-                                <label><input type="radio" name="csv-type" value="items"> Itens</label>
+                                <label><input type="radio" name="csv-type" value="config" checked> <span data-i18n="ie.csv_config">Configuração</span></label>
+                                <label><input type="radio" name="csv-type" value="items"> <span data-i18n="ie.csv_items">Itens</span></label>
                             </div>
-                            <button class="btn btn-secondary btn-sm btn-block" id="btn-csv-upload">Selecionar
-                                CSV</button>
+                            <button class="btn btn-secondary btn-sm btn-block" id="btn-csv-upload" data-i18n="ie.csv_select">Selecionar CSV</button>
                             <input type="file" id="file-csv" accept=".csv" style="display:none">
                         </div>
 
@@ -260,6 +260,7 @@
 
     <!-- Scripts (order matters: dependencies first) -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/engine.js"></script>
     <script src="js/state.js"></script>
     <script src="js/tooltip.js"></script>

@@ -21,9 +21,9 @@ const ImportExport = (() => {
                 const ok = await State.saveToFileSystem();
                 if (ok) {
                     autoSaveHandle = State._lastFileHandle;
-                    showToast('Arquivo salvo com sucesso', 'success');
+                    showToast(I18n.t('ie.fs_save_ok'), 'success');
                 }
-            } catch (e) { showToast('Erro ao salvar: ' + e.message, 'error'); }
+            } catch (e) { showToast(I18n.t('ie.fs_save_error', { msg: e.message }), 'error'); }
         });
 
         document.getElementById('btn-load-fs').addEventListener('click', async () => {
@@ -31,9 +31,9 @@ const ImportExport = (() => {
                 const ok = await State.loadFromFileSystem();
                 if (ok) {
                     autoSaveHandle = State._lastFileHandle;
-                    showToast('Arquivo carregado com sucesso', 'success');
+                    showToast(I18n.t('ie.fs_load_ok'), 'success');
                 }
-            } catch (e) { showToast('Erro ao carregar: ' + e.message, 'error'); }
+            } catch (e) { showToast(I18n.t('ie.fs_load_error', { msg: e.message }), 'error'); }
         });
 
         // Auto-save toggle
@@ -62,19 +62,20 @@ const ImportExport = (() => {
         stopAutoSave();
         autoSaveInterval = setInterval(async () => {
             if (!autoSaveHandle) {
-                showToast('Auto-save: salve manualmente primeiro para definir o arquivo', 'error');
+                showToast(I18n.t('ie.autosave_save_first'), 'error');
                 return;
             }
             try {
                 const writable = await autoSaveHandle.createWritable();
                 await writable.write(State.exportJSON());
                 await writable.close();
-                updateAutoSaveStatus('Salvo às ' + new Date().toLocaleTimeString('pt-BR'));
+                const time = new Date().toLocaleTimeString(I18n.getLocale());
+                updateAutoSaveStatus(I18n.t('ie.autosave_saved_at', { time }));
             } catch (e) {
-                updateAutoSaveStatus('Erro ao salvar');
+                updateAutoSaveStatus(I18n.t('ie.autosave_error'));
             }
         }, seconds * 1000);
-        updateAutoSaveStatus('Ativo — a cada ' + seconds + 's');
+        updateAutoSaveStatus(I18n.t('ie.autosave_on', { n: seconds }));
     }
 
     function stopAutoSave() {
@@ -82,7 +83,7 @@ const ImportExport = (() => {
             clearInterval(autoSaveInterval);
             autoSaveInterval = null;
         }
-        updateAutoSaveStatus('Desativado');
+        updateAutoSaveStatus(I18n.t('ie.autosave_off'));
     }
 
     function updateAutoSaveStatus(text) {
@@ -100,7 +101,7 @@ const ImportExport = (() => {
         a.download = `roadmap-${config.periodo.replace('/', '-')}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('JSON exportado com sucesso', 'success');
+        showToast(I18n.t('ie.json_exported'), 'success');
     }
 
     function handleJSONUpload(e) {
@@ -110,9 +111,9 @@ const ImportExport = (() => {
         reader.onload = () => {
             try {
                 State.importJSON(reader.result);
-                showToast('JSON importado com sucesso', 'success');
+                showToast(I18n.t('ie.json_imported'), 'success');
             } catch (err) {
-                showToast('Erro ao importar JSON: ' + err.message, 'error');
+                showToast(I18n.t('ie.json_import_error', { msg: err.message }), 'error');
             }
         };
         reader.readAsText(file);
@@ -122,15 +123,15 @@ const ImportExport = (() => {
     function applyPaste() {
         const text = document.getElementById('paste-area').value;
         if (!text.trim()) {
-            showToast('Cole os dados antes de aplicar', 'error');
+            showToast(I18n.t('ie.paste_empty'), 'error');
             return;
         }
         try {
             State.importConfigFromTSV(text);
-            showToast('Configuração aplicada com sucesso', 'success');
+            showToast(I18n.t('ie.paste_applied'), 'success');
             document.getElementById('paste-area').value = '';
         } catch (err) {
-            showToast('Erro: ' + err.message, 'error');
+            showToast(err.message, 'error');
         }
     }
 
@@ -143,13 +144,13 @@ const ImportExport = (() => {
                 const csvType = document.querySelector('input[name="csv-type"]:checked').value;
                 if (csvType === 'config') {
                     State.importConfigFromCSV(reader.result);
-                    showToast('Configuração CSV importada com sucesso', 'success');
+                    showToast(I18n.t('ie.csv_config_imported'), 'success');
                 } else {
                     State.importItemsFromCSV(reader.result);
-                    showToast('Itens CSV importados com sucesso', 'success');
+                    showToast(I18n.t('ie.csv_items_imported'), 'success');
                 }
             } catch (err) {
-                showToast('Erro ao importar CSV: ' + err.message, 'error');
+                showToast(I18n.t('ie.csv_import_error', { msg: err.message }), 'error');
             }
         };
         reader.readAsText(file);
@@ -210,7 +211,7 @@ const ImportExport = (() => {
     // ─── Export PNG only ────────────────
     async function exportPNGOnly() {
         try {
-            showToast('Gerando imagem PNG...', 'success');
+            showToast(I18n.t('ie.png_generating'), 'success');
             const canvas = await captureRoadmapCanvas();
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             const url = URL.createObjectURL(blob);
@@ -219,16 +220,16 @@ const ImportExport = (() => {
             a.download = getExportFileName() + '.png';
             a.click();
             URL.revokeObjectURL(url);
-            showToast('PNG exportado com sucesso', 'success');
+            showToast(I18n.t('ie.png_exported'), 'success');
         } catch (e) {
-            showToast('Erro ao exportar PNG: ' + e.message, 'error');
+            showToast(I18n.t('ie.png_error', { msg: e.message }), 'error');
         }
     }
 
     // ─── Export HTML + PNG ────────────────
     async function exportHTMLWithPNG() {
         try {
-            showToast('Gerando HTML + PNG...', 'success');
+            showToast(I18n.t('ie.html_generating'), 'success');
             const canvas = await captureRoadmapCanvas();
             const baseName = getExportFileName();
             const pngFileName = baseName + '.png';
@@ -292,9 +293,9 @@ const ImportExport = (() => {
                 URL.revokeObjectURL(htmlUrl);
             }, 500);
 
-            showToast('HTML + PNG exportados com sucesso! Salve ambos na mesma pasta.', 'success');
+            showToast(I18n.t('ie.html_exported'), 'success');
         } catch (e) {
-            showToast('Erro ao exportar HTML: ' + e.message, 'error');
+            showToast(I18n.t('ie.html_error', { msg: e.message }), 'error');
         }
     }
 
@@ -325,18 +326,18 @@ const ImportExport = (() => {
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(() => {
-                    showToast('Link copiado para a área de transferência', 'success');
-                    if (statusEl) statusEl.textContent = `Tamanho: ${url.length} caracteres`;
+                    showToast(I18n.t('ie.share_copied'), 'success');
+                    if (statusEl) statusEl.textContent = I18n.t('ie.share_size', { n: url.length });
                 }, () => {
                     if (statusEl) statusEl.textContent = url;
-                    showToast('Não foi possível copiar; o link aparece abaixo do botão', 'error');
+                    showToast(I18n.t('ie.share_copy_failed'), 'error');
                 });
             } else {
                 if (statusEl) statusEl.textContent = url;
-                showToast('Copie o link abaixo do botão', 'success');
+                showToast(I18n.t('ie.share_copy_below'), 'success');
             }
         } catch (e) {
-            showToast('Erro ao gerar link: ' + e.message, 'error');
+            showToast(I18n.t('ie.share_error', { msg: e.message }), 'error');
         }
     }
 
@@ -347,13 +348,13 @@ const ImportExport = (() => {
 
         try {
             const json = decodeHashToJSON(match[1]);
-            const proceed = confirm('Esta página tem um roadmap compartilhado no link. Carregar e substituir o roadmap atual?');
+            const proceed = confirm(I18n.t('ie.share_confirm_load'));
             if (proceed) {
                 State.importJSON(json);
-                showToast('Roadmap carregado do link compartilhado', 'success');
+                showToast(I18n.t('ie.share_loaded'), 'success');
             }
         } catch (e) {
-            showToast('Link compartilhado inválido: ' + e.message, 'error');
+            showToast(I18n.t('ie.share_invalid', { msg: e.message }), 'error');
         }
         // Always strip the hash so reloads don't keep prompting.
         history.replaceState(null, '', location.pathname + location.search);

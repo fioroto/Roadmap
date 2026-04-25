@@ -133,7 +133,7 @@ const Renderer = (() => {
             const memberAvatarHtml = member ? `<div class="item-bar-avatar" style="background:${member.color};color:${State.getContrastColor(member.color)};" title="${escapeAttr(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
 
             html += `<div class="${barClass}" ${dataAttrs} role="button" tabindex="0" aria-label="${escapeAttr(item.title)}" style="left:${left}px; width:${width}px; top:${top}px; background:${typeColor.bg}; color:${typeColor.text}; border-color:${typeColor.border};">`;
-            html += `<div class="resize-handle resize-handle-left" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-side="left" role="button" aria-label="Redimensionar início"></div>`;
+            html += `<div class="resize-handle resize-handle-left" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-side="left" role="button" aria-label="${escapeAttr(I18n.t('roadmap.resize_start'))}"></div>`;
             html += memberAvatarHtml;
             html += `<span class="item-title">${escapeHtml(item.title)}</span>`;
             html += statusHtml;
@@ -146,7 +146,7 @@ const Renderer = (() => {
                 html += `<div class="delay-overlay" style="left:${dLeft}%; width:${dWidth}%;"></div>`;
             });
 
-            html += `<div class="resize-handle resize-handle-right" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-side="right" role="button" aria-label="Redimensionar fim"></div>`;
+            html += `<div class="resize-handle resize-handle-right" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-side="right" role="button" aria-label="${escapeAttr(I18n.t('roadmap.resize_end'))}"></div>`;
             html += '</div>';
         });
         return html;
@@ -175,7 +175,7 @@ const Renderer = (() => {
         sprints = Engine.calculateSprints(config);
 
         if (!sprints.length) {
-            container.innerHTML = '<div class="roadmap-empty">Configure as datas para gerar o roadmap.</div>';
+            container.innerHTML = `<div class="roadmap-empty">${escapeHtml(I18n.t('roadmap.empty_msg'))}</div>`;
             return;
         }
 
@@ -193,7 +193,7 @@ const Renderer = (() => {
 
         const headerEl = document.getElementById('roadmap-title');
         const subtitleEl = document.getElementById('roadmap-subtitle');
-        if (headerEl) headerEl.textContent = `ROADMAP ${config.periodo}`;
+        if (headerEl) headerEl.textContent = `${I18n.t('roadmap.label_prefix')} ${config.periodo}`;
         if (subtitleEl) subtitleEl.textContent = config.squad;
 
         renderLegend();
@@ -225,7 +225,7 @@ const Renderer = (() => {
         const firstType = (cfg.itemTypes && cfg.itemTypes[0]) ? cfg.itemTypes[0].value : 'EV';
         const defaultSprint = sprints.length ? sprints[0].number : 1;
         const id = State.addItem({
-            title: 'Novo Item',
+            title: I18n.t('items.new_item'),
             type: firstType,
             intruder: false,
             status: '',
@@ -485,13 +485,13 @@ const Renderer = (() => {
             html += `<span class="legend-chip" style="background:${t.color}; color:${textColor};">${escapeHtml(t.label)}</span>`;
         });
 
-        html += '<span class="legend-chip legend-chip-outline intruder-chip">Intruder</span>';
+        html += `<span class="legend-chip legend-chip-outline intruder-chip">${escapeHtml(I18n.t('roadmap.legend_intruder'))}</span>`;
         statusTypes.forEach(s => {
             if (s.value !== '' && s.icon) {
                 html += `<span class="legend-chip legend-chip-status"><span class="status-icon">${escapeHtml(s.icon)}</span> ${escapeHtml(s.label)}</span>`;
             }
         });
-        html += '<span class="legend-chip legend-chip-delay">Delay</span>';
+        html += `<span class="legend-chip legend-chip-delay">${escapeHtml(I18n.t('roadmap.legend_delay'))}</span>`;
 
         legendEl.innerHTML = html;
     }

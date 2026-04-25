@@ -190,7 +190,10 @@ const State = (() => {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
         } catch (e) {
             if (typeof showToast === 'function') {
-                showToast('Falha ao salvar no navegador: ' + e.message, 'error');
+                const msg = (typeof I18n !== 'undefined')
+                    ? I18n.t('state.save_failed', { msg: e.message })
+                    : ('Falha ao salvar no navegador: ' + e.message);
+                showToast(msg, 'error');
             } else {
                 console.warn('[State] save failed:', e);
             }
@@ -252,7 +255,7 @@ const State = (() => {
 
     function importConfigFromTSV(text) {
         const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
-        if (!lines.length) throw new Error('Nenhum dado encontrado');
+        if (!lines.length) throw new Error(I18n.t('ie.error_no_data'));
 
         const firstLineCols = lines[0].split('\t');
 
@@ -275,7 +278,7 @@ const State = (() => {
             return;
         }
 
-        throw new Error('Formato não reconhecido. Use duas colunas (chave→valor) ou cabeçalho+valores.');
+        throw new Error(I18n.t('ie.error_paste_format'));
     }
 
     function applyConfigMap(cfg) {
@@ -324,7 +327,7 @@ const State = (() => {
     function importConfigFromCSV(text) {
         const sep = detectSeparator(text);
         const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
-        if (lines.length < 2) throw new Error('CSV precisa de cabeçalho + pelo menos uma linha');
+        if (lines.length < 2) throw new Error(I18n.t('ie.error_csv_header'));
         const headers = parseCSVLine(lines[0], sep);
         const values = parseCSVLine(lines[1], sep);
         const cfg = {};
@@ -335,7 +338,7 @@ const State = (() => {
     function importItemsFromCSV(text) {
         const sep = detectSeparator(text);
         const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
-        if (lines.length < 2) throw new Error('CSV precisa de cabeçalho + pelo menos uma linha');
+        if (lines.length < 2) throw new Error(I18n.t('ie.error_csv_header'));
         const headers = parseCSVLine(lines[0], sep);
 
         const rows = [];

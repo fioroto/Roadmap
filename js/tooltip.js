@@ -26,7 +26,7 @@ const Tooltip = (() => {
         html += '<div class="tooltip-meta">';
         html += `<span class="tooltip-type-chip" style="background:${typeColor}">${escapeHtml(typeLabel)}</span>`;
         if (item.intruder) {
-            html += '<span class="tooltip-intruder-badge">Intruder</span>';
+            html += `<span class="tooltip-intruder-badge">${escapeHtml(I18n.t('roadmap.legend_intruder'))}</span>`;
         }
         if (statusEntry && statusEntry.value !== '') {
             html += `<span class="tooltip-status">${escapeHtml(statusEntry.label)}</span>`;
@@ -36,13 +36,14 @@ const Tooltip = (() => {
         }
         html += '</div>';
 
+        const midSuffix = ' (' + I18n.t('editor.sprint_mid_label') + ')';
         html += '<div class="tooltip-detail">';
-        const startLabel = `Sprint ${seg.sprintStart}${seg.startHalf ? ' (meio)' : ''}`;
-        const endLabel = `Sprint ${seg.sprintEnd}${seg.endHalf ? ' (meio)' : ''}`;
-        html += `<div class="tooltip-row"><span class="tooltip-label">Segmento</span><span class="tooltip-value">${startLabel} → ${endLabel}</span></div>`;
+        const startLabel = `Sprint ${seg.sprintStart}${seg.startHalf ? midSuffix : ''}`;
+        const endLabel = `Sprint ${seg.sprintEnd}${seg.endHalf ? midSuffix : ''}`;
+        html += `<div class="tooltip-row"><span class="tooltip-label">${escapeHtml(I18n.t('editor.segment'))}</span><span class="tooltip-value">${startLabel} → ${endLabel}</span></div>`;
 
         if (seg.delays && seg.delays.length > 0) {
-            html += '<div class="tooltip-row"><span class="tooltip-label">Delays</span><span class="tooltip-value">';
+            html += `<div class="tooltip-row"><span class="tooltip-label">${escapeHtml(I18n.t('tooltip.delays'))}</span><span class="tooltip-value">`;
             seg.delays.forEach((d, i) => {
                 if (i > 0) html += ', ';
                 html += `Sprint ${d.delaySprintStart}–${d.delaySprintEnd}`;
@@ -51,7 +52,7 @@ const Tooltip = (() => {
         }
 
         if (item.observacao) {
-            html += `<div class="tooltip-obs"><span class="tooltip-label">Observação</span><div class="tooltip-obs-text">${escapeHtml(item.observacao)}</div></div>`;
+            html += `<div class="tooltip-obs"><span class="tooltip-label">${escapeHtml(I18n.t('editor.observacao'))}</span><div class="tooltip-obs-text">${escapeHtml(item.observacao)}</div></div>`;
         }
 
         html += '</div>';

@@ -11,11 +11,28 @@
 document.addEventListener('DOMContentLoaded', () => {
     State.load();
 
+    // Apply current locale to all data-i18n elements before module init.
+    I18n.applyToDOM();
+    document.documentElement.setAttribute('lang', I18n.getLocale());
+
     Renderer.init(document.getElementById('roadmap-container'));
     Tooltip.init();
     ConfigPanel.init();
     ItemEditor.init();
     ImportExport.init();
+
+    // Locale selector
+    const localeSelect = document.getElementById('cfg-locale');
+    if (localeSelect) {
+        localeSelect.value = I18n.getLocale();
+        localeSelect.addEventListener('change', () => I18n.setLocale(localeSelect.value));
+    }
+    // When locale changes, reapply DOM translations and re-render dynamic modules.
+    I18n.onChange(() => {
+        // Re-render anything that injects strings via JS (filters, item form, types, roadmap).
+        State.emit('config:changed', State.getConfig());
+        State.emit('state:changed', State.getState());
+    });
 
     // If the URL contains a #share=... hash, offer to load it (overrides loaded state).
     if (typeof ImportExport.tryLoadFromHash === 'function') ImportExport.tryLoadFromHash();
@@ -142,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (e.key === 'Delete' || e.key === 'Backspace') {
-            if (lastSelectedId && confirm('Excluir o item selecionado?')) {
+            if (lastSelectedId && confirm(I18n.t('editor.confirm_delete_selected'))) {
                 e.preventDefault();
                 State.deleteItem(lastSelectedId);
                 lastSelectedId = null;

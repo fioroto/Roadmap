@@ -189,60 +189,65 @@ const ConfigPanel = (() => {
         const itemTypes = State.getItemTypes();
         const statusTypes = State.getStatusTypes();
 
+        const tLabel = escapeAttr(I18n.t('types.label_placeholder'));
+        const tIcon = escapeAttr(I18n.t('types.icon_placeholder'));
+        const tName = escapeAttr(I18n.t('types.name_placeholder'));
+        const tSprint = escapeAttr(I18n.t('types.sprint_placeholder'));
+
         container.innerHTML = `
             <div class="editor-divider"></div>
-            <div class="config-section-title">Tipos de Item</div>
+            <div class="config-section-title">${escapeHtml(I18n.t('types.item_types'))}</div>
             <div class="type-list" id="item-types-list">
                 ${itemTypes.map((t, i) => `
                     <div class="type-row">
                         <input type="color" class="type-color-picker" value="${escapeAttr(t.color)}" data-idx="${i}" data-kind="item" style="width:32px;height:28px;padding:2px;border-radius:4px;cursor:pointer;flex-shrink:0;">
-                        <input type="text" class="type-label-input" value="${escapeAttr(t.label)}" data-idx="${i}" data-kind="item" placeholder="Rótulo">
+                        <input type="text" class="type-label-input" value="${escapeAttr(t.label)}" data-idx="${i}" data-kind="item" placeholder="${tLabel}">
                         <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="item" ${itemTypes.length <= 1 ? 'disabled' : ''}>✕</button>
                     </div>
                 `).join('')}
             </div>
-            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-item-type">+ Tipo de Item</button>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-item-type">${escapeHtml(I18n.t('types.add_item_type'))}</button>
 
             <div class="editor-divider"></div>
-            <div class="config-section-title">Tipos de Status</div>
+            <div class="config-section-title">${escapeHtml(I18n.t('types.status_types'))}</div>
             <div class="type-list" id="status-types-list">
                 ${statusTypes.map((s, i) => `
                     <div class="type-row">
-                        <input type="text" class="type-icon-input" value="${escapeAttr(s.icon)}" data-idx="${i}" data-kind="status" placeholder="ícone" style="width:42px;text-align:center;flex-shrink:0;">
-                        <input type="text" class="type-label-input" value="${escapeAttr(s.label)}" data-idx="${i}" data-kind="status" placeholder="Rótulo">
+                        <input type="text" class="type-icon-input" value="${escapeAttr(s.icon)}" data-idx="${i}" data-kind="status" placeholder="${tIcon}" style="width:42px;text-align:center;flex-shrink:0;">
+                        <input type="text" class="type-label-input" value="${escapeAttr(s.label)}" data-idx="${i}" data-kind="status" placeholder="${tLabel}">
                         <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="status" ${s.value === '' ? 'disabled' : ''}>✕</button>
                     </div>
                 `).join('')}
             </div>
-            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-status-type">+ Tipo de Status</button>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-status-type">${escapeHtml(I18n.t('types.add_status_type'))}</button>
 
             <div class="editor-divider"></div>
-            <div class="config-section-title">Membros do Time</div>
+            <div class="config-section-title">${escapeHtml(I18n.t('types.team_members'))}</div>
             <div class="type-list" id="team-members-list">
                 ${(State.getTeamMembers()).map((m, i) => `
                     <div class="type-row">
                         <div class="member-avatar-small" style="background:${escapeAttr(m.color)};color:${State.getContrastColor(m.color)};">${escapeHtml((m.name || '?')[0].toUpperCase())}</div>
-                        <input type="text" class="member-name-input" value="${escapeAttr(m.name)}" data-idx="${i}" placeholder="Nome">
+                        <input type="text" class="member-name-input" value="${escapeAttr(m.name)}" data-idx="${i}" placeholder="${tName}">
                         <input type="color" class="member-color-picker" value="${escapeAttr(m.color)}" data-idx="${i}" style="width:32px;height:28px;padding:2px;border-radius:4px;cursor:pointer;flex-shrink:0;">
                         <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="member">✕</button>
                     </div>
                 `).join('')}
             </div>
-            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-member">+ Membro</button>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-member">${escapeHtml(I18n.t('types.add_member'))}</button>
 
             <div class="editor-divider"></div>
-            <div class="config-section-title">Milestones</div>
+            <div class="config-section-title">${escapeHtml(I18n.t('types.milestones'))}</div>
             <div class="type-list" id="milestones-list">
                 ${(State.getMilestones()).map((m, i) => `
                     <div class="type-row">
                         <input type="color" class="milestone-color-picker" value="${escapeAttr(m.color || '#f59e0b')}" data-idx="${i}" style="width:32px;height:28px;padding:2px;border-radius:4px;cursor:pointer;flex-shrink:0;">
-                        <input type="text" class="milestone-name-input" value="${escapeAttr(m.name || '')}" data-idx="${i}" placeholder="Nome">
-                        <input type="number" class="milestone-sprint-input" value="${escapeAttr(m.sprint != null ? m.sprint : '')}" data-idx="${i}" placeholder="Sprint" style="width:64px;flex-shrink:0;">
+                        <input type="text" class="milestone-name-input" value="${escapeAttr(m.name || '')}" data-idx="${i}" placeholder="${tName}">
+                        <input type="number" class="milestone-sprint-input" value="${escapeAttr(m.sprint != null ? m.sprint : '')}" data-idx="${i}" placeholder="${tSprint}" style="width:64px;flex-shrink:0;">
                         <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="milestone">✕</button>
                     </div>
                 `).join('')}
             </div>
-            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-milestone">+ Milestone</button>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-milestone">${escapeHtml(I18n.t('types.add_milestone'))}</button>
         `;
 
         bindTypeManagementEvents(container, itemTypes, statusTypes);
@@ -255,7 +260,7 @@ const ConfigPanel = (() => {
         container.querySelector('#btn-add-member').addEventListener('click', () => {
             const colors = ['#6366f1', '#ec4899', '#f97316', '#14b8a6', '#8b5cf6', '#ef4444', '#22c55e', '#3b82f6'];
             const color = colors[teamMembers.length % colors.length];
-            const newMembers = [...teamMembers, { id: State.generateTypeId('mb'), name: 'Novo Membro', color }];
+            const newMembers = [...teamMembers, { id: State.generateTypeId('mb'), name: I18n.t('types.new_member'), color }];
             State.setConfig({ teamMembers: newMembers });
         });
 
@@ -290,7 +295,7 @@ const ConfigPanel = (() => {
         container.querySelector('#btn-add-item-type').addEventListener('click', () => {
             const newTypes = [...itemTypes, {
                 value: State.generateTypeId('it'),
-                label: 'Novo Tipo',
+                label: I18n.t('types.new_type'),
                 color: '#6366f1'
             }];
             State.setConfig({ itemTypes: newTypes });
@@ -299,7 +304,7 @@ const ConfigPanel = (() => {
         container.querySelector('#btn-add-status-type').addEventListener('click', () => {
             const newStatuses = [...statusTypes, {
                 value: State.generateTypeId('st'),
-                label: 'Novo Status',
+                label: I18n.t('types.new_status'),
                 icon: ''
             }];
             State.setConfig({ statusTypes: newStatuses });
@@ -316,7 +321,7 @@ const ConfigPanel = (() => {
                 State.setConfig({
                     milestones: [...milestones, {
                         id: State.generateTypeId('ms'),
-                        name: 'Marco',
+                        name: I18n.t('types.new_milestone'),
                         sprint: defaultSprint,
                         color: '#f59e0b'
                     }]

@@ -29,23 +29,23 @@ const ItemEditor = (() => {
         container.style.flexWrap = 'wrap';
         container.style.gap = '6px';
         container.innerHTML = `
-            <label style="font-size:11px;color:var(--text-muted);white-space:nowrap;width:100%;">Filtros</label>
+            <label style="font-size:11px;color:var(--text-muted);white-space:nowrap;width:100%;">${escapeHtml(I18n.t('filter.label'))}</label>
             <select id="filter-type" style="${filterCommon}">
-                <option value="">Todos os tipos</option>
+                <option value="">${escapeHtml(I18n.t('filter.all_types'))}</option>
                 ${itemTypes.map(t => `<option value="${escapeAttr(t.value)}" ${filterTypeValue === t.value ? 'selected' : ''}>${escapeHtml(t.label)}</option>`).join('')}
             </select>
             <select id="filter-status" style="${filterCommon}">
-                <option value="__all__" ${filterStatusValue === '__all__' ? 'selected' : ''}>Todos os status</option>
-                <option value="" ${filterStatusValue === '' ? 'selected' : ''}>Sem status</option>
+                <option value="__all__" ${filterStatusValue === '__all__' ? 'selected' : ''}>${escapeHtml(I18n.t('filter.all_statuses'))}</option>
+                <option value="" ${filterStatusValue === '' ? 'selected' : ''}>${escapeHtml(I18n.t('filter.no_status'))}</option>
                 ${statusTypes.filter(s => s.value !== '').map(s => `<option value="${escapeAttr(s.value)}" ${filterStatusValue === s.value ? 'selected' : ''}>${escapeHtml(s.label)}</option>`).join('')}
             </select>
             ${teamMembers.length ? `
             <select id="filter-member" style="${filterCommon}">
-                <option value="__all__" ${!filterMemberId ? 'selected' : ''}>Todos responsáveis</option>
-                <option value="__none__" ${filterMemberId === '__none__' ? 'selected' : ''}>Sem responsável</option>
+                <option value="__all__" ${!filterMemberId ? 'selected' : ''}>${escapeHtml(I18n.t('filter.all_members'))}</option>
+                <option value="__none__" ${filterMemberId === '__none__' ? 'selected' : ''}>${escapeHtml(I18n.t('filter.no_member'))}</option>
                 ${teamMembers.map(m => `<option value="${escapeAttr(m.id)}" ${filterMemberId === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
             </select>` : ''}
-            ${(filterTypeValue || filterStatusValue !== '__all__' || filterMemberId) ? `<button id="filter-clear" class="btn btn-secondary btn-sm" style="flex-shrink:0;">Limpar</button>` : ''}
+            ${(filterTypeValue || filterStatusValue !== '__all__' || filterMemberId) ? `<button id="filter-clear" class="btn btn-secondary btn-sm" style="flex-shrink:0;">${escapeHtml(I18n.t('filter.clear'))}</button>` : ''}
         `;
 
         const typeSel = container.querySelector('#filter-type');
@@ -81,14 +81,14 @@ const ItemEditor = (() => {
         let items = State.getItems();
 
         if (!items.length) {
-            listEl.innerHTML = '<div class="no-items-msg">Nenhum item cadastrado. Clique em + para adicionar.</div>';
+            listEl.innerHTML = `<div class="no-items-msg">${escapeHtml(I18n.t('items.empty'))}</div>`;
             return;
         }
 
         items = applyFilters(items);
 
         if (!items.length) {
-            listEl.innerHTML = '<div class="no-items-msg">Nenhum item encontrado para este filtro.</div>';
+            listEl.innerHTML = `<div class="no-items-msg">${escapeHtml(I18n.t('items.empty_filtered'))}</div>`;
             return;
         }
 
@@ -106,8 +106,8 @@ const ItemEditor = (() => {
           <span class="item-card-title">${escapeHtml(item.title)}</span>
           ${memberHtml}
           <div class="item-card-actions">
-            <button data-action="edit" data-id="${item.id}" title="Editar">✎</button>
-            <button data-action="delete" data-id="${item.id}" title="Excluir">✕</button>
+            <button data-action="edit" data-id="${item.id}" title="${escapeAttr(I18n.t('editor.action_edit'))}">✎</button>
+            <button data-action="delete" data-id="${item.id}" title="${escapeAttr(I18n.t('editor.action_delete'))}">✕</button>
           </div>
         </div>`;
         }).join('');
@@ -125,7 +125,7 @@ const ItemEditor = (() => {
 
         listEl.querySelectorAll('[data-action="delete"]').forEach(btn => {
             btn.addEventListener('click', () => {
-                if (confirm('Excluir este item?')) {
+                if (confirm(I18n.t('editor.confirm_delete_one'))) {
                     State.deleteItem(btn.dataset.id);
                     if (selectedItemId === btn.dataset.id) {
                         selectedItemId = null;
@@ -148,7 +148,7 @@ const ItemEditor = (() => {
         const sprints = Engine.calculateSprints(cfg);
         const defaultSprint = sprints.length ? sprints[0].number : 1;
         const id = State.addItem({
-            title: 'Novo Item',
+            title: I18n.t('items.new_item'),
             type: firstType,
             intruder: false,
             status: '',
@@ -159,21 +159,21 @@ const ItemEditor = (() => {
     }
 
     function sprintHalfOptions(sprints, selectedSprint, isHalf, mode) {
-        // mode: 'start' or 'end'
-        // For start: "Início" = not half (beginning), "Meio" = half (middle)
-        // For end: "Meio" = half (middle), "Fim" = not half (end)
+        const begin = I18n.t('editor.sprint_begin_label');
+        const mid = I18n.t('editor.sprint_mid_label');
+        const end = I18n.t('editor.sprint_end_label');
         let html = '';
         sprints.forEach(s => {
             if (mode === 'start') {
                 const selBegin = (s.number === selectedSprint && !isHalf) ? 'selected' : '';
                 const selMid = (s.number === selectedSprint && isHalf) ? 'selected' : '';
-                html += `<option value="${s.number}" data-half="false" ${selBegin}>Sprint ${s.number} (início)</option>`;
-                html += `<option value="${s.number}" data-half="true" ${selMid}>Sprint ${s.number} (meio)</option>`;
+                html += `<option value="${s.number}" data-half="false" ${selBegin}>Sprint ${s.number} (${begin})</option>`;
+                html += `<option value="${s.number}" data-half="true" ${selMid}>Sprint ${s.number} (${mid})</option>`;
             } else {
                 const selMid = (s.number === selectedSprint && isHalf) ? 'selected' : '';
                 const selEnd = (s.number === selectedSprint && !isHalf) ? 'selected' : '';
-                html += `<option value="${s.number}" data-half="true" ${selMid}>Sprint ${s.number} (meio)</option>`;
-                html += `<option value="${s.number}" data-half="false" ${selEnd}>Sprint ${s.number} (fim)</option>`;
+                html += `<option value="${s.number}" data-half="true" ${selMid}>Sprint ${s.number} (${mid})</option>`;
+                html += `<option value="${s.number}" data-half="false" ${selEnd}>Sprint ${s.number} (${end})</option>`;
             }
         });
         return html;
@@ -191,20 +191,20 @@ const ItemEditor = (() => {
         const teamMembers = State.getTeamMembers();
 
         let html = `
-      <div class="config-section-title">Editar Item</div>
+      <div class="config-section-title">${escapeHtml(I18n.t('editor.title'))}</div>
       <div class="form-group">
-        <label>Título</label>
+        <label>${escapeHtml(I18n.t('editor.field_title'))}</label>
         <input type="text" id="edit-title" value="${escapeAttr(item.title)}">
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Tipo</label>
+          <label>${escapeHtml(I18n.t('editor.field_type'))}</label>
           <select id="edit-type">
             ${cfgTypes.map(o => `<option value="${escapeAttr(o.value)}" ${item.type === o.value ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
-          <label>Status</label>
+          <label>${escapeHtml(I18n.t('editor.field_status'))}</label>
           <select id="edit-status">
             ${cfgStatuses.map(o => `<option value="${escapeAttr(o.value)}" ${item.status === o.value ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
           </select>
@@ -212,39 +212,39 @@ const ItemEditor = (() => {
       </div>
       ${teamMembers.length ? `
       <div class="form-group">
-        <label>Responsável</label>
+        <label>${escapeHtml(I18n.t('editor.field_responsavel'))}</label>
         <select id="edit-responsavel">
-          <option value="" ${!item.responsavel ? 'selected' : ''}>Sem responsável</option>
+          <option value="" ${!item.responsavel ? 'selected' : ''}>${escapeHtml(I18n.t('editor.no_responsavel'))}</option>
           ${teamMembers.map(m => `<option value="${escapeAttr(m.id)}" ${item.responsavel === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
         </select>
       </div>` : ''}
       <div class="checkbox-group">
         <input type="checkbox" id="edit-intruder" ${item.intruder ? 'checked' : ''}>
-        <label for="edit-intruder">Intruder</label>
+        <label for="edit-intruder">${escapeHtml(I18n.t('editor.intruder'))}</label>
       </div>
       <div class="form-group">
-        <label>Observação</label>
+        <label>${escapeHtml(I18n.t('editor.observacao'))}</label>
         <textarea id="edit-observacao" rows="2">${escapeHtml(item.observacao)}</textarea>
       </div>
       <div class="editor-divider"></div>
-      <div class="config-section-title">Segmentos</div>`;
+      <div class="config-section-title">${escapeHtml(I18n.t('editor.segments'))}</div>`;
 
         item.segments.forEach((seg, segIdx) => {
             html += `
         <div class="segment-block">
           <div class="segment-header">
-            <span class="segment-label">Segmento ${segIdx + 1}</span>
+            <span class="segment-label">${escapeHtml(I18n.t('editor.segment'))} ${segIdx + 1}</span>
             <button class="btn btn-danger btn-sm" data-action="remove-segment" data-seg="${segIdx}">✕</button>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Sprint Início</label>
+              <label>${escapeHtml(I18n.t('editor.sprint_start'))}</label>
               <select data-field="seg-start" data-seg="${segIdx}">
                 ${sprintHalfOptions(sprints, seg.sprintStart, !!seg.startHalf, 'start')}
               </select>
             </div>
             <div class="form-group">
-              <label>Sprint Fim</label>
+              <label>${escapeHtml(I18n.t('editor.sprint_end'))}</label>
               <select data-field="seg-end" data-seg="${segIdx}">
                 ${sprintHalfOptions(sprints, seg.sprintEnd, !!seg.endHalf, 'end')}
               </select>
@@ -255,18 +255,18 @@ const ItemEditor = (() => {
                 html += `
           <div class="delay-block">
             <div class="delay-header">
-              <span class="delay-label">Delay ${dIdx + 1}</span>
+              <span class="delay-label">${escapeHtml(I18n.t('editor.delay'))} ${dIdx + 1}</span>
               <button class="btn btn-danger btn-sm" data-action="remove-delay" data-seg="${segIdx}" data-delay="${dIdx}">✕</button>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Sprint Início</label>
+                <label>${escapeHtml(I18n.t('editor.sprint_start'))}</label>
                 <select data-field="delay-start" data-seg="${segIdx}" data-delay="${dIdx}">
                   ${sprints.map(s => `<option value="${s.number}" ${delay.delaySprintStart === s.number ? 'selected' : ''}>Sprint ${s.number}</option>`).join('')}
                 </select>
               </div>
               <div class="form-group">
-                <label>Sprint Fim</label>
+                <label>${escapeHtml(I18n.t('editor.sprint_end'))}</label>
                 <select data-field="delay-end" data-seg="${segIdx}" data-delay="${dIdx}">
                   ${sprints.map(s => `<option value="${s.number}" ${delay.delaySprintEnd === s.number ? 'selected' : ''}>Sprint ${s.number}</option>`).join('')}
                 </select>
@@ -275,14 +275,14 @@ const ItemEditor = (() => {
           </div>`;
             });
 
-            html += `<button class="btn btn-secondary btn-sm" data-action="add-delay" data-seg="${segIdx}" style="margin-top:6px;">+ Delay</button>`;
+            html += `<button class="btn btn-secondary btn-sm" data-action="add-delay" data-seg="${segIdx}" style="margin-top:6px;">${escapeHtml(I18n.t('editor.add_delay'))}</button>`;
             html += '</div>';
         });
 
         html += `
-      <button class="btn btn-secondary btn-sm btn-block" id="btn-add-segment" style="margin-top:8px;">+ Segmento</button>
+      <button class="btn btn-secondary btn-sm btn-block" id="btn-add-segment" style="margin-top:8px;">${escapeHtml(I18n.t('editor.add_segment'))}</button>
       <div class="btn-group">
-        <button class="btn btn-primary btn-block" id="btn-save-item">Salvar</button>
+        <button class="btn btn-primary btn-block" id="btn-save-item">${escapeHtml(I18n.t('editor.save'))}</button>
       </div>`;
 
         formEl.innerHTML = html;
@@ -370,12 +370,12 @@ const ItemEditor = (() => {
         };
 
         State.updateItem(id, updates);
-        showToast('Item salvo com sucesso', 'success');
+        showToast(I18n.t('editor.saved'), 'success');
     }
 
     function clearForm() {
         const formEl = document.getElementById('item-form');
-        formEl.innerHTML = '<div class="no-items-msg">Selecione um item para editar</div>';
+        formEl.innerHTML = `<div class="no-items-msg">${escapeHtml(I18n.t('items.select_to_edit'))}</div>`;
     }
 
     function escapeHtml(str) {

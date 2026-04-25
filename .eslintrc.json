@@ -15,6 +15,7 @@
     "ConfigPanel": "readonly",
     "ItemEditor": "readonly",
     "ImportExport": "readonly",
+    "I18n": "readonly",
     "html2canvas": "readonly",
     "showToast": "readonly"
   },
