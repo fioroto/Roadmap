@@ -229,6 +229,20 @@ const ConfigPanel = (() => {
                 `).join('')}
             </div>
             <button class="btn btn-secondary btn-sm btn-block" id="btn-add-member">+ Membro</button>
+
+            <div class="editor-divider"></div>
+            <div class="config-section-title">Milestones</div>
+            <div class="type-list" id="milestones-list">
+                ${(State.getMilestones()).map((m, i) => `
+                    <div class="type-row">
+                        <input type="color" class="milestone-color-picker" value="${escapeAttr(m.color || '#f59e0b')}" data-idx="${i}" style="width:32px;height:28px;padding:2px;border-radius:4px;cursor:pointer;flex-shrink:0;">
+                        <input type="text" class="milestone-name-input" value="${escapeAttr(m.name || '')}" data-idx="${i}" placeholder="Nome">
+                        <input type="number" class="milestone-sprint-input" value="${escapeAttr(m.sprint != null ? m.sprint : '')}" data-idx="${i}" placeholder="Sprint" style="width:64px;flex-shrink:0;">
+                        <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="milestone">✕</button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-milestone">+ Milestone</button>
         `;
 
         bindTypeManagementEvents(container, itemTypes, statusTypes);
@@ -291,6 +305,61 @@ const ConfigPanel = (() => {
             State.setConfig({ statusTypes: newStatuses });
         });
 
+        // ─── Milestones ─────────────────────────────────
+        const milestones = State.getMilestones();
+
+        const addMilestoneBtn = container.querySelector('#btn-add-milestone');
+        if (addMilestoneBtn) {
+            addMilestoneBtn.addEventListener('click', () => {
+                const sprints = Engine.calculateSprints(State.getConfig());
+                const defaultSprint = sprints.length ? sprints[0].number : 1;
+                State.setConfig({
+                    milestones: [...milestones, {
+                        id: State.generateTypeId('ms'),
+                        name: 'Marco',
+                        sprint: defaultSprint,
+                        color: '#f59e0b'
+                    }]
+                });
+            });
+        }
+
+        container.querySelectorAll('.milestone-name-input').forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(typeDebounceTimer);
+                typeDebounceTimer = setTimeout(() => {
+                    const idx = parseInt(input.dataset.idx, 10);
+                    _skipTypeRerender = true;
+                    State.setConfig({ milestones: milestones.map((m, i) => i === idx ? { ...m, name: input.value } : m) });
+                    _skipTypeRerender = false;
+                }, 300);
+            });
+        });
+
+        container.querySelectorAll('.milestone-sprint-input').forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(typeDebounceTimer);
+                typeDebounceTimer = setTimeout(() => {
+                    const idx = parseInt(input.dataset.idx, 10);
+                    const val = parseInt(input.value, 10);
+                    if (!Number.isFinite(val)) return;
+                    _skipTypeRerender = true;
+                    State.setConfig({ milestones: milestones.map((m, i) => i === idx ? { ...m, sprint: val } : m) });
+                    _skipTypeRerender = false;
+                }, 300);
+            });
+        });
+
+        container.querySelectorAll('.milestone-color-picker').forEach(picker => {
+            picker.addEventListener('input', () => {
+                const idx = parseInt(picker.dataset.idx, 10);
+                _skipTypeRerender = true;
+                State.setConfig({ milestones: milestones.map((m, i) => i === idx ? { ...m, color: picker.value } : m) });
+                _skipTypeRerender = false;
+            });
+            picker.addEventListener('change', () => renderTypeManagement());
+        });
+
         container.querySelectorAll('.type-delete-btn').forEach(btn => {
             if (btn.disabled) return;
             btn.addEventListener('click', () => {
@@ -299,9 +368,12 @@ const ConfigPanel = (() => {
                 if (kind === 'item') {
                     if (itemTypes.length <= 1) return;
                     State.setConfig({ itemTypes: itemTypes.filter((_, i) => i !== idx) });
-                } else {
+                } else if (kind === 'status') {
                     if (statusTypes[idx] && statusTypes[idx].value === '') return;
                     State.setConfig({ statusTypes: statusTypes.filter((_, i) => i !== idx) });
+                } else if (kind === 'milestone') {
+                    const milestones = State.getMilestones();
+                    State.setConfig({ milestones: milestones.filter((_, i) => i !== idx) });
                 }
             });
         });

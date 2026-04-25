@@ -81,6 +81,24 @@ const Renderer = (() => {
         return html;
     }
 
+    function buildMilestones(gridHeight) {
+        const milestones = State.getMilestones();
+        if (!milestones.length || !sprints.length) return '';
+        const minSprint = sprints[0].number;
+        const maxSprint = sprints[sprints.length - 1].number;
+        let html = '';
+        milestones.forEach(m => {
+            const sprintNum = parseInt(m.sprint, 10);
+            if (!Number.isFinite(sprintNum) || sprintNum < minSprint || sprintNum > maxSprint) return;
+            const half = !!m.half;
+            const left = (sprintNum - minSprint) * colWidth + (half ? colWidth / 2 : 0);
+            const color = m.color || '#f59e0b';
+            html += `<div class="milestone-line" style="left:${left}px; height:${gridHeight}px; background:${color};" title="${escapeAttr(m.name || '')}"></div>`;
+            html += `<div class="milestone-flag" style="left:${left}px; background:${color}; color:${State.getContrastColor(color)};" title="${escapeAttr(m.name || '')}">${escapeHtml(m.name || '')}</div>`;
+        });
+        return html;
+    }
+
     function buildItemBar(entry, minSprint, cfgItemTypes, cfgStatusTypes, teamMembers) {
         const item = entry.item;
         const track = entry.track;
@@ -142,6 +160,7 @@ const Renderer = (() => {
 
         let html = `<div class="roadmap-grid" id="roadmap-grid" style="width: ${sprintCount * colWidth}px; min-height: ${gridHeight}px; position: relative;">`;
         html += buildGridBackground(sprintCount);
+        html += buildMilestones(gridHeight);
         trackEntries.forEach(entry => {
             html += buildItemBar(entry, minSprint, cfgItemTypes, cfgStatusTypes, teamMembers);
         });
