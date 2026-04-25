@@ -352,7 +352,12 @@ const ItemEditor = (() => {
     }
 
     function escapeAttr(str) {
-        return (str || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return (str == null ? '' : String(str))
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     return { init, selectItem };

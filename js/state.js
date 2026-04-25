@@ -1,5 +1,6 @@
 const State = (() => {
     const STORAGE_KEY = 'roadmap-planner-data';
+    const SCHEMA_VERSION = 1;
 
     const defaultConfig = {
         periodo: 'Q1/2026',
@@ -138,18 +139,53 @@ const State = (() => {
     }
 
     function save() {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+        try {
+            const payload = { version: SCHEMA_VERSION, data: state };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {
+            if (typeof showToast === 'function') {
+                showToast('Falha ao salvar no navegador: ' + e.message, 'error');
+            } else {
+                console.warn('[State] save failed:', e);
+            }
+        }
     }
 
     function load() {
+        let raw;
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                state.config = { ...defaultConfig, ...parsed.config };
-                state.items = normalizeItems(parsed.items);
-            }
-        } catch (e) { /* ignore */ }
+            raw = localStorage.getItem(STORAGE_KEY);
+        } catch (e) {
+            console.warn('[State] localStorage unavailable:', e);
+            return;
+        }
+        if (!raw) return;
+
+        let parsed;
+        try {
+            parsed = JSON.parse(raw);
+        } catch (e) {
+            console.warn('[State] saved data is not valid JSON; using defaults:', e);
+            return;
+        }
+
+        const migrated = migrate(parsed);
+        state.config = { ...defaultConfig, ...(migrated.config || {}) };
+        state.items = normalizeItems(migrated.items);
+
+        // If we migrated from a legacy format, persist in the new shape.
+        if (!parsed.version) save();
+    }
+
+    function migrate(parsed) {
+        // v0 (legacy): { config, items } at top level — no version field.
+        // v1: { version: 1, data: { config, items } }.
+        if (!parsed || typeof parsed !== 'object') return { config: {}, items: [] };
+        if (!parsed.version) {
+            return { config: parsed.config || {}, items: parsed.items || [] };
+        }
+        const data = parsed.data || {};
+        return { config: data.config || {}, items: data.items || [] };
     }
 
     function exportJSON() {
