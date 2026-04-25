@@ -11,36 +11,38 @@ document.addEventListener('DOMContentLoaded', () => {
     State.on('config:changed', () => Renderer.render());
     State.on('item:select', (id) => Renderer.setSelectedItem(id));
 
-    // Helper to get a muted/secondary variant from a contrast color
+    // If main text is light (dark bg), return a lighter muted gray; else a darker one.
     function getMutedColor(contrastColor) {
-        // If main text is light (dark bg), return a lighter muted gray
-        // If main text is dark (light bg), return a darker muted gray
         return contrastColor === '#1e293b' ? '#64748b' : '#94a3b8';
     }
 
-    // Apply background color from config
-    State.on('config:changed', (cfg) => {
+    function applyColors(cfg) {
+        if (!cfg) return;
+        const root = document.documentElement.style;
+
         if (cfg.bgColor) {
-            document.documentElement.style.setProperty('--bg-primary', cfg.bgColor);
+            root.setProperty('--bg-primary', cfg.bgColor);
         }
         if (cfg.headerColor) {
-            document.querySelector('.app-header').style.background = cfg.headerColor;
-            const headerContrast = State.getContrastColor(cfg.headerColor);
-            document.documentElement.style.setProperty('--header-text', headerContrast);
-            document.documentElement.style.setProperty('--header-text-secondary', getMutedColor(headerContrast));
+            const headerEl = document.querySelector('.app-header');
+            if (headerEl) headerEl.style.background = cfg.headerColor;
+            const c = State.getContrastColor(cfg.headerColor);
+            root.setProperty('--header-text', c);
+            root.setProperty('--header-text-secondary', getMutedColor(c));
         }
         if (cfg.monthBandColor) {
-            document.documentElement.style.setProperty('--month-band-bg', cfg.monthBandColor);
-            const monthContrast = State.getContrastColor(cfg.monthBandColor);
-            document.documentElement.style.setProperty('--month-band-text', monthContrast);
+            root.setProperty('--month-band-bg', cfg.monthBandColor);
+            root.setProperty('--month-band-text', State.getContrastColor(cfg.monthBandColor));
         }
         if (cfg.sprintBandColor) {
-            document.documentElement.style.setProperty('--sprint-band-bg', cfg.sprintBandColor);
-            const sprintContrast = State.getContrastColor(cfg.sprintBandColor);
-            document.documentElement.style.setProperty('--sprint-band-text', sprintContrast);
-            document.documentElement.style.setProperty('--sprint-band-text-muted', getMutedColor(sprintContrast));
+            root.setProperty('--sprint-band-bg', cfg.sprintBandColor);
+            const c = State.getContrastColor(cfg.sprintBandColor);
+            root.setProperty('--sprint-band-text', c);
+            root.setProperty('--sprint-band-text-muted', getMutedColor(c));
         }
-    });
+    }
+
+    State.on('config:changed', applyColors);
 
     // Panel tab switching
     document.querySelectorAll('.panel-tab').forEach(tab => {
@@ -72,31 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Apply initial colors
-    const initialBg = State.getConfig().bgColor;
-    if (initialBg) {
-        document.documentElement.style.setProperty('--bg-primary', initialBg);
-    }
-    const initialHeaderColor = State.getConfig().headerColor;
-    if (initialHeaderColor) {
-        document.querySelector('.app-header').style.background = initialHeaderColor;
-        const hContrast = State.getContrastColor(initialHeaderColor);
-        document.documentElement.style.setProperty('--header-text', hContrast);
-        document.documentElement.style.setProperty('--header-text-secondary', getMutedColor(hContrast));
-    }
-    const initialMonthBandColor = State.getConfig().monthBandColor;
-    if (initialMonthBandColor) {
-        document.documentElement.style.setProperty('--month-band-bg', initialMonthBandColor);
-        const mContrast = State.getContrastColor(initialMonthBandColor);
-        document.documentElement.style.setProperty('--month-band-text', mContrast);
-    }
-    const initialSprintBandColor = State.getConfig().sprintBandColor;
-    if (initialSprintBandColor) {
-        document.documentElement.style.setProperty('--sprint-band-bg', initialSprintBandColor);
-        const sContrast = State.getContrastColor(initialSprintBandColor);
-        document.documentElement.style.setProperty('--sprint-band-text', sContrast);
-        document.documentElement.style.setProperty('--sprint-band-text-muted', getMutedColor(sContrast));
-    }
+    applyColors(State.getConfig());
 
     Renderer.render();
 
