@@ -30,6 +30,45 @@ const State = (() => {
     let state = { config: { ...defaultConfig }, items: [] };
     const listeners = {};
 
+    // ─── History (undo/redo) ─────────────────────────────
+    const MAX_HISTORY = 50;
+    const history = [];
+    const future = [];
+
+    function snapshot() {
+        return JSON.stringify(state);
+    }
+
+    function pushHistory() {
+        history.push(snapshot());
+        if (history.length > MAX_HISTORY) history.shift();
+        future.length = 0;
+    }
+
+    function restore(serialized) {
+        const parsed = JSON.parse(serialized);
+        state.config = { ...defaultConfig, ...(parsed.config || {}) };
+        state.items = normalizeItems(parsed.items);
+    }
+
+    function undo() {
+        if (!history.length) return;
+        future.push(snapshot());
+        restore(history.pop());
+        save();
+        emit('config:changed', state.config);
+        emit('state:changed', state);
+    }
+
+    function redo() {
+        if (!future.length) return;
+        history.push(snapshot());
+        restore(future.pop());
+        save();
+        emit('config:changed', state.config);
+        emit('state:changed', state);
+    }
+
     function on(event, fn) {
         (listeners[event] = listeners[event] || []).push(fn);
     }
@@ -46,6 +85,7 @@ const State = (() => {
     function getTeamMembers() { return state.config.teamMembers || []; }
 
     function setConfig(cfg) {
+        pushHistory();
         state.config = { ...state.config, ...cfg };
         state.config.diasSprint = parseInt(state.config.diasSprint, 10) || 14;
         state.config.sprintStartNumber = parseInt(state.config.sprintStartNumber, 10) || 1;
@@ -55,12 +95,14 @@ const State = (() => {
     }
 
     function setItems(items) {
+        pushHistory();
         state.items = normalizeItems(items);
         save();
         emit('state:changed', state);
     }
 
     function addItem(item) {
+        pushHistory();
         item.id = item.id || generateId();
         state.items.push(normalizeItem(item));
         save();
@@ -71,12 +113,14 @@ const State = (() => {
     function updateItem(id, updates) {
         const idx = state.items.findIndex(i => i.id === id);
         if (idx === -1) return;
+        pushHistory();
         state.items[idx] = normalizeItem({ ...state.items[idx], ...updates });
         save();
         emit('state:changed', state);
     }
 
     function deleteItem(id) {
+        pushHistory();
         state.items = state.items.filter(i => i.id !== id);
         save();
         emit('state:changed', state);
@@ -194,8 +238,11 @@ const State = (() => {
 
     function importJSON(jsonString) {
         const parsed = JSON.parse(jsonString);
-        if (parsed.config) state.config = { ...defaultConfig, ...parsed.config };
-        state.items = normalizeItems(parsed.items || []);
+        // Accept both legacy shape ({ config, items }) and versioned ({ version, data: { config, items } }).
+        const source = parsed && parsed.version && parsed.data ? parsed.data : parsed;
+        pushHistory();
+        if (source.config) state.config = { ...defaultConfig, ...source.config };
+        state.items = normalizeItems(source.items || []);
         save();
         emit('config:changed', state.config);
         emit('state:changed', state);
@@ -374,6 +421,7 @@ const State = (() => {
         saveToFileSystem, loadFromFileSystem,
         getItemTypes, getStatusTypes, getTeamMembers,
         generateTypeId, getContrastColor, darkenColor,
+        undo, redo,
         on, emit
     };
 })();

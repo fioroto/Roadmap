@@ -45,9 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Panel tab switching
     document.querySelectorAll('.panel-tab').forEach(tab => {
         tab.addEventListener('click', () => {
-            document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel-tab').forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
             document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('active'));
             tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
             const target = document.getElementById(tab.dataset.target);
             if (target) target.classList.add('active');
         });
@@ -60,7 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleBtn.addEventListener('click', () => {
             sidePanel.classList.toggle('collapsed');
             toggleBtn.classList.toggle('collapsed');
-            toggleBtn.textContent = sidePanel.classList.contains('collapsed') ? '▶' : '◀';
+            const collapsed = sidePanel.classList.contains('collapsed');
+            toggleBtn.textContent = collapsed ? '▶' : '◀';
+            toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
             // Re-render roadmap after panel transition completes (200ms)
             setTimeout(() => Renderer.render(), 210);
         });
@@ -93,4 +99,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     Renderer.render();
+
+    // ─── Keyboard shortcuts ─────────────────────────────
+    let lastSelectedId = null;
+    State.on('item:select', (id) => { lastSelectedId = id; });
+
+    document.addEventListener('keydown', (e) => {
+        const target = e.target;
+        const isEditable = target && (
+            target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable
+        );
+
+        // Ctrl/Cmd + Z / Y — undo/redo
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+            if (isEditable) return;
+            e.preventDefault();
+            State.undo();
+            return;
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) {
+            if (isEditable) return;
+            e.preventDefault();
+            State.redo();
+            return;
+        }
+
+        if (isEditable) return;
+
+        if (e.key === 'Escape') {
+            State.emit('item:select', null);
+            return;
+        }
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (lastSelectedId && confirm('Excluir o item selecionado?')) {
+                e.preventDefault();
+                State.deleteItem(lastSelectedId);
+                lastSelectedId = null;
+            }
+        }
+    });
 });

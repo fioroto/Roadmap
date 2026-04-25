@@ -127,8 +127,8 @@ const Renderer = (() => {
                 const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
                 const memberAvatarHtml = member ? `<div class="item-bar-avatar" style="background:${member.color};color:${State.getContrastColor(member.color)};" title="${escapeAttr(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
 
-                html += `<div class="${barClass}" ${dataAttrs} style="left:${left}px; width:${width}px; top:${top}px; background:${typeColor.bg}; color:${typeColor.text}; border-color:${typeColor.border};">`;
-                html += `<div class="resize-handle resize-handle-left" data-item-id="${item.id}" data-segment-index="${segIdx}" data-side="left"></div>`;
+                html += `<div class="${barClass}" ${dataAttrs} role="button" tabindex="0" aria-label="${escapeAttr(item.title)}" style="left:${left}px; width:${width}px; top:${top}px; background:${typeColor.bg}; color:${typeColor.text}; border-color:${typeColor.border};">`;
+                html += `<div class="resize-handle resize-handle-left" data-item-id="${item.id}" data-segment-index="${segIdx}" data-side="left" role="button" aria-label="Redimensionar início"></div>`;
                 html += memberAvatarHtml;
                 html += `<span class="item-title">${escapeHtml(item.title)}</span>`;
                 html += statusHtml;
@@ -142,7 +142,7 @@ const Renderer = (() => {
                     html += `<div class="delay-overlay" style="left:${dLeft}%; width:${dWidth}%;"></div>`;
                 });
 
-                html += `<div class="resize-handle resize-handle-right" data-item-id="${item.id}" data-segment-index="${segIdx}" data-side="right"></div>`;
+                html += `<div class="resize-handle resize-handle-right" data-item-id="${item.id}" data-segment-index="${segIdx}" data-side="right" role="button" aria-label="Redimensionar fim"></div>`;
                 html += '</div>';
             });
         });
