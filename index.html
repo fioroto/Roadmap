@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
         content="Roadmap de sprints para squads — planejamento visual de épicos e projetos por sprint.">
+    <meta name="theme-color" content="#0f172a">
     <title>Roadmap Planner</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230d9488'/%3E%3Crect x='3' y='4' width='10' height='2' rx='1' fill='white'/%3E%3Crect x='3' y='7' width='7' height='2' rx='1' fill='white'/%3E%3Crect x='3' y='10' width='8' height='2' rx='1' fill='white'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 
@@ -21,7 +23,7 @@
                 <span id="roadmap-subtitle" class="roadmap-subtitle">Squad Ativação</span>
             </div>
             <div id="roadmap-legend" class="roadmap-legend"></div>
-            <button class="roadmap-add-btn" id="btn-roadmap-add" title="Adicionar item ao roadmap">+</button>
+            <button class="roadmap-add-btn" id="btn-roadmap-add" title="Adicionar item ao roadmap" aria-label="Adicionar item ao roadmap">+</button>
         </header>
 
         <!-- ─── Body ─── -->
@@ -33,14 +35,14 @@
             </div>
 
             <!-- Panel Toggle -->
-            <button class="panel-toggle" id="btn-toggle-panel" title="Abrir/Fechar painel">◀</button>
+            <button class="panel-toggle" id="btn-toggle-panel" title="Abrir/Fechar painel" aria-label="Abrir ou fechar painel lateral" aria-expanded="true" aria-controls="side-panel">◀</button>
 
             <!-- Side Panel -->
             <aside class="side-panel" id="side-panel">
-                <div class="panel-tabs">
-                    <button class="panel-tab active" data-target="section-config">Config</button>
-                    <button class="panel-tab" data-target="section-items">Itens</button>
-                    <button class="panel-tab" data-target="section-import">Import/Export</button>
+                <div class="panel-tabs" role="tablist">
+                    <button class="panel-tab active" data-target="section-config" role="tab" aria-selected="true" aria-controls="section-config">Config</button>
+                    <button class="panel-tab" data-target="section-items" role="tab" aria-selected="false" aria-controls="section-items">Itens</button>
+                    <button class="panel-tab" data-target="section-import" role="tab" aria-selected="false" aria-controls="section-import">Import/Export</button>
                 </div>
 
                 <div class="panel-content">
@@ -233,7 +235,7 @@
     <div id="tooltip-card"></div>
 
     <!-- Toast Container -->
-    <div id="toast-container" class="toast-container"></div>
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
 
     <!-- Scripts (order matters: dependencies first) -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>

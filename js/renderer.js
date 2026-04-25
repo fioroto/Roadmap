@@ -13,6 +13,140 @@ const Renderer = (() => {
         container.addEventListener('mousedown', onMouseDown);
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
+
+        // Tooltip via event delegation — single set of listeners for all bars.
+        container.addEventListener('mouseover', onContainerMouseOver);
+        container.addEventListener('mousemove', onContainerMouseMove);
+        container.addEventListener('mouseout', onContainerMouseOut);
+    }
+
+    function onContainerMouseOver(e) {
+        if (dragState) return;
+        const bar = e.target.closest('.item-bar');
+        if (!bar || !container.contains(bar)) return;
+        // Only fire on entering the bar (not on inner element transitions).
+        if (bar.contains(e.relatedTarget)) return;
+        const itemId = bar.dataset.itemId;
+        const segIdx = parseInt(bar.dataset.segmentIndex, 10);
+        const item = State.getItems().find(i => i.id === itemId);
+        if (item) Tooltip.show(e, item, segIdx, sprints);
+    }
+
+    function onContainerMouseMove(e) {
+        if (dragState) return;
+        if (e.target.closest('.item-bar')) Tooltip.position(e);
+    }
+
+    function onContainerMouseOut(e) {
+        const bar = e.target.closest('.item-bar');
+        if (!bar) return;
+        if (bar.contains(e.relatedTarget)) return;
+        Tooltip.hide();
+    }
+
+    function buildStickyHeader(sprintCount, monthBands) {
+        let html = '<div class="roadmap-sticky-header">';
+
+        html += `<div class="month-band" style="grid-template-columns: repeat(${sprintCount}, ${colWidth}px);">`;
+        monthBands.forEach(band => {
+            html += `<div class="month-cell" style="grid-column: span ${band.spanCount}">${escapeHtml(band.label)}</div>`;
+        });
+        html += '</div>';
+
+        html += `<div class="sprint-band" style="grid-template-columns: repeat(${sprintCount}, ${colWidth}px);">`;
+        sprints.forEach(s => {
+            const label = `Sprint ${s.number}`;
+            const dateRange = `${Engine.formatDateShort(s.startDate)} – ${Engine.formatDateShort(s.endDate)}`;
+            html += `<div class="sprint-cell"><span class="sprint-number">${label}</span><span class="sprint-dates">${dateRange}</span></div>`;
+        });
+        html += '</div>';
+
+        html += '</div>';
+        return html;
+    }
+
+    function buildGridBackground(sprintCount) {
+        let html = '';
+        for (let i = 1; i < sprintCount; i++) {
+            html += `<div class="sprint-separator" style="left: ${i * colWidth}px;"></div>`;
+        }
+        for (let i = 0; i < sprintCount; i++) {
+            html += `<div class="sprint-separator sprint-mid-separator" style="left: ${i * colWidth + colWidth / 2}px;"></div>`;
+        }
+        for (let i = 0; i < sprintCount; i++) {
+            if (i % 2 === 1) {
+                html += `<div class="sprint-bg-alt" style="left: ${i * colWidth}px; width: ${colWidth}px;"></div>`;
+            }
+        }
+        return html;
+    }
+
+    function buildItemBar(entry, minSprint, cfgItemTypes, cfgStatusTypes, teamMembers) {
+        const item = entry.item;
+        const track = entry.track;
+        const typeEntry = cfgItemTypes.find(t => t.value === item.type) || cfgItemTypes[0] || { color: '#6b7280' };
+        const typeColor = {
+            bg: typeEntry.color,
+            text: State.getContrastColor(typeEntry.color),
+            border: State.darkenColor(typeEntry.color, 0.25)
+        };
+
+        let html = '';
+        item.segments.forEach((seg, segIdx) => {
+            const startOffset = seg.startHalf ? 0.5 : 0;
+            const endOffset = seg.endHalf ? -0.5 : 0;
+            const startCol = (seg.sprintStart - minSprint) + startOffset;
+            const span = seg.sprintEnd - seg.sprintStart + 1 + endOffset - startOffset;
+            const left = startCol * colWidth;
+            const width = span * colWidth;
+            const top = track * 52 + 8;
+
+            let barClass = 'item-bar';
+            if (item.intruder) barClass += ' intruder';
+            if (item.id === selectedItemId) barClass += ' selected';
+
+            const statusEntry = cfgStatusTypes.find(s => s.value === item.status);
+            const statusIcon = statusEntry ? (statusEntry.icon || '') : '';
+            const statusHtml = statusIcon ? `<span class="item-status-icon">${escapeHtml(statusIcon)}</span>` : '';
+
+            const dataAttrs = `data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-track="${track}"`;
+
+            const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
+            const memberAvatarHtml = member ? `<div class="item-bar-avatar" style="background:${member.color};color:${State.getContrastColor(member.color)};" title="${escapeAttr(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
+
+            html += `<div class="${barClass}" ${dataAttrs} role="button" tabindex="0" aria-label="${escapeAttr(item.title)}" style="left:${left}px; width:${width}px; top:${top}px; background:${typeColor.bg}; color:${typeColor.text}; border-color:${typeColor.border};">`;
+            html += `<div class="resize-handle resize-handle-left" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-side="left" role="button" aria-label="Redimensionar início"></div>`;
+            html += memberAvatarHtml;
+            html += `<span class="item-title">${escapeHtml(item.title)}</span>`;
+            html += statusHtml;
+
+            (seg.delays || []).forEach(delay => {
+                const dStart = delay.delaySprintStart - seg.sprintStart;
+                const dSpan = delay.delaySprintEnd - delay.delaySprintStart + 1;
+                const dLeft = (dStart / span) * 100;
+                const dWidth = (dSpan / span) * 100;
+                html += `<div class="delay-overlay" style="left:${dLeft}%; width:${dWidth}%;"></div>`;
+            });
+
+            html += `<div class="resize-handle resize-handle-right" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-side="right" role="button" aria-label="Redimensionar fim"></div>`;
+            html += '</div>';
+        });
+        return html;
+    }
+
+    function buildGrid(sprintCount, gridHeight, trackEntries) {
+        const minSprint = sprints[0].number;
+        const cfgItemTypes = State.getItemTypes();
+        const cfgStatusTypes = State.getStatusTypes();
+        const teamMembers = State.getTeamMembers();
+
+        let html = `<div class="roadmap-grid" id="roadmap-grid" style="width: ${sprintCount * colWidth}px; min-height: ${gridHeight}px; position: relative;">`;
+        html += buildGridBackground(sprintCount);
+        trackEntries.forEach(entry => {
+            html += buildItemBar(entry, minSprint, cfgItemTypes, cfgStatusTypes, teamMembers);
+        });
+        html += '</div>';
+        return html;
     }
 
     function render() {
@@ -30,10 +164,8 @@ const Renderer = (() => {
         const clampedItems = Engine.clampSegments(items, sprints);
         const trackEntries = Engine.allocateTracks(clampedItems, sprints);
         const trackCount = trackEntries.length ? Math.max(...trackEntries.map(e => e.track)) + 1 : 0;
-
         const sprintCount = sprints.length;
 
-        // Calculate colWidth based on actual available width
         const wrapperEl = container.closest('.roadmap-wrapper');
         const panel = document.getElementById('side-panel');
         const panelOpen = panel && !panel.classList.contains('collapsed');
@@ -47,126 +179,11 @@ const Renderer = (() => {
 
         renderLegend();
 
-        let html = '';
-
-        // Sticky header wrapper
-        html += '<div class="roadmap-sticky-header">';
-
-        // Month band
-        html += '<div class="month-band" style="grid-template-columns: repeat(' + sprintCount + ', ' + colWidth + 'px);">';
-        monthBands.forEach(band => {
-            html += `<div class="month-cell" style="grid-column: span ${band.spanCount}">${band.label}</div>`;
-        });
-        html += '</div>';
-
-        // Sprint band
-        html += '<div class="sprint-band" style="grid-template-columns: repeat(' + sprintCount + ', ' + colWidth + 'px);">';
-        sprints.forEach(s => {
-            const label = `Sprint ${s.number}`;
-            const dateRange = `${Engine.formatDateShort(s.startDate)} – ${Engine.formatDateShort(s.endDate)}`;
-            html += `<div class="sprint-cell"><span class="sprint-number">${label}</span><span class="sprint-dates">${dateRange}</span></div>`;
-        });
-        html += '</div>';
-
-        html += '</div>'; // end sticky header
-
-        // Grid area
         const gridHeight = Math.max(trackCount, 3) * 52 + 16;
-        html += `<div class="roadmap-grid" id="roadmap-grid" style="width: ${sprintCount * colWidth}px; min-height: ${gridHeight}px; position: relative;">`;
+        container.innerHTML =
+            buildStickyHeader(sprintCount, monthBands) +
+            buildGrid(sprintCount, gridHeight, trackEntries);
 
-        // Vertical separators (full sprint boundaries + mid-sprint dashes)
-        for (let i = 1; i < sprintCount; i++) {
-            html += `<div class="sprint-separator" style="left: ${i * colWidth}px;"></div>`;
-        }
-        for (let i = 0; i < sprintCount; i++) {
-            html += `<div class="sprint-separator sprint-mid-separator" style="left: ${i * colWidth + colWidth / 2}px;"></div>`;
-        }
-
-        // Alternating sprint backgrounds
-        for (let i = 0; i < sprintCount; i++) {
-            if (i % 2 === 1) {
-                html += `<div class="sprint-bg-alt" style="left: ${i * colWidth}px; width: ${colWidth}px;"></div>`;
-            }
-        }
-
-        // Item bars
-        const minSprint = sprints[0].number;
-        const cfgItemTypes = State.getItemTypes();
-        const cfgStatusTypes = State.getStatusTypes();
-        const teamMembers = State.getTeamMembers();
-
-        trackEntries.forEach(entry => {
-            const item = entry.item;
-            const track = entry.track;
-            const typeEntry = cfgItemTypes.find(t => t.value === item.type) || cfgItemTypes[0] || { color: '#6b7280' };
-            const typeColor = {
-                bg: typeEntry.color,
-                text: State.getContrastColor(typeEntry.color),
-                border: State.darkenColor(typeEntry.color, 0.25)
-            };
-
-            item.segments.forEach((seg, segIdx) => {
-                const startOffset = seg.startHalf ? 0.5 : 0;
-                const endOffset = seg.endHalf ? -0.5 : 0;
-                const startCol = (seg.sprintStart - minSprint) + startOffset;
-                const span = seg.sprintEnd - seg.sprintStart + 1 + endOffset - startOffset;
-                const left = startCol * colWidth;
-                const width = span * colWidth;
-                const top = track * 52 + 8;
-
-                let barClass = 'item-bar';
-                if (item.intruder) barClass += ' intruder';
-                if (item.id === selectedItemId) barClass += ' selected';
-
-                const statusEntry = cfgStatusTypes.find(s => s.value === item.status);
-                const statusIcon = statusEntry ? (statusEntry.icon || '') : '';
-                const statusHtml = statusIcon ? `<span class="item-status-icon">${statusIcon}</span>` : '';
-
-                const dataAttrs = `data-item-id="${item.id}" data-segment-index="${segIdx}" data-track="${track}"`;
-
-                const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
-                const memberAvatarHtml = member ? `<div class="item-bar-avatar" style="background:${member.color};color:${State.getContrastColor(member.color)};" title="${escapeHtml(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
-
-                html += `<div class="${barClass}" ${dataAttrs} style="left:${left}px; width:${width}px; top:${top}px; background:${typeColor.bg}; color:${typeColor.text}; border-color:${typeColor.border};">`;
-                html += `<div class="resize-handle resize-handle-left" data-item-id="${item.id}" data-segment-index="${segIdx}" data-side="left"></div>`;
-                html += memberAvatarHtml;
-                html += `<span class="item-title">${escapeHtml(item.title)}</span>`;
-                html += statusHtml;
-
-                // Delay overlays
-                (seg.delays || []).forEach(delay => {
-                    const dStart = delay.delaySprintStart - seg.sprintStart;
-                    const dSpan = delay.delaySprintEnd - delay.delaySprintStart + 1;
-                    const dLeft = (dStart / span) * 100;
-                    const dWidth = (dSpan / span) * 100;
-                    html += `<div class="delay-overlay" style="left:${dLeft}%; width:${dWidth}%;"></div>`;
-                });
-
-                html += `<div class="resize-handle resize-handle-right" data-item-id="${item.id}" data-segment-index="${segIdx}" data-side="right"></div>`;
-                html += '</div>';
-            });
-        });
-
-        html += '</div>'; // end grid
-
-        container.innerHTML = html;
-
-        // Attach hover events for tooltip
-        container.querySelectorAll('.item-bar').forEach(bar => {
-            bar.addEventListener('mouseenter', (e) => {
-                if (dragState) return;
-                const itemId = bar.dataset.itemId;
-                const segIdx = parseInt(bar.dataset.segmentIndex, 10);
-                const item = State.getItems().find(i => i.id === itemId);
-                if (item) Tooltip.show(e, item, segIdx, sprints);
-            });
-            bar.addEventListener('mousemove', (e) => {
-                if (!dragState) Tooltip.position(e);
-            });
-            bar.addEventListener('mouseleave', () => Tooltip.hide());
-        });
-
-        // Attach add button (in header)
         const addBtn = document.getElementById('btn-roadmap-add');
         if (addBtn) {
             addBtn.onclick = (e) => {
@@ -464,6 +481,15 @@ const Renderer = (() => {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+        return (str == null ? '' : String(str))
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     function getSprints() { return sprints; }

@@ -1,0 +1,28 @@
+{
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "script"
+  },
+  "globals": {
+    "State": "readonly",
+    "Engine": "readonly",
+    "Renderer": "readonly",
+    "Tooltip": "readonly",
+    "ConfigPanel": "readonly",
+    "ItemEditor": "readonly",
+    "ImportExport": "readonly",
+    "html2canvas": "readonly",
+    "showToast": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": "warn",
+    "no-undef": "error",
+    "no-var": "error",
+    "prefer-const": "warn",
+    "eqeqeq": ["error", "smart"]
+  }
+}

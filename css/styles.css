@@ -1112,3 +1112,60 @@ body {
     font-size: 10px;
     font-weight: 500;
 }
+
+/* ─── Accessibility: focus rings ───────────────────── */
+:focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+.item-bar:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ─── Mobile responsiveness ────────────────────────── */
+@media (max-width: 900px) {
+    .app-body {
+        flex-direction: column;
+    }
+
+    .roadmap-wrapper {
+        order: 1;
+        overflow-x: auto;
+    }
+
+    .side-panel {
+        order: 2;
+        width: 100%;
+        max-width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        max-height: 60vh;
+    }
+
+    .side-panel.collapsed {
+        max-height: 0;
+        overflow: hidden;
+    }
+
+    .panel-toggle {
+        order: 3;
+        position: relative;
+        right: auto;
+        top: auto;
+        width: 100%;
+        border-radius: 0;
+        height: 28px;
+    }
+
+    .app-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .roadmap-legend {
+        order: 3;
+        width: 100%;
+    }
+}
