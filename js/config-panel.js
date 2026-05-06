@@ -4,7 +4,7 @@ const ConfigPanel = (() => {
     let _skipTypeRerender = false;
 
     function init() {
-        const fields = ['periodo', 'squad', 'dataInicio', 'dataFim', 'diasSprint', 'sprintStartNumber'];
+        const fields = ['periodo', 'squad', 'dataInicio', 'dataFim', 'diasSprint', 'sprintStartNumber', 'referenceDate', 'roadmapNotes'];
         fields.forEach(field => {
             const el = document.getElementById('cfg-' + field);
             if (!el) return;
@@ -115,6 +115,8 @@ const ConfigPanel = (() => {
         setVal('cfg-dataFim', cfg.dataFim);
         setVal('cfg-diasSprint', cfg.diasSprint);
         setVal('cfg-sprintStartNumber', cfg.sprintStartNumber);
+        setVal('cfg-referenceDate', cfg.referenceDate || '');
+        setVal('cfg-roadmapNotes', cfg.roadmapNotes || '');
 
         const bgColor = cfg.bgColor || '#0f172a';
         const colorPicker = document.getElementById('cfg-bgColor');
@@ -157,7 +159,9 @@ const ConfigPanel = (() => {
             bgColor: getVal('cfg-bgColor') || '#0f172a',
             headerColor: getVal('cfg-headerColor') || '#1e293b',
             monthBandColor: getVal('cfg-monthBandColor') || '#1e293b',
-            sprintBandColor: getVal('cfg-sprintBandColor') || '#334155'
+            sprintBandColor: getVal('cfg-sprintBandColor') || '#334155',
+            referenceDate: getVal('cfg-referenceDate') || '',
+            roadmapNotes: getVal('cfg-roadmapNotes') || ''
         });
     }
 

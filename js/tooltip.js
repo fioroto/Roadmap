@@ -28,6 +28,9 @@ const Tooltip = (() => {
         if (item.intruder) {
             html += '<span class="tooltip-intruder-badge">Intruder</span>';
         }
+        if (item.highlight) {
+            html += '<span class="tooltip-highlight-badge">★ Destaque</span>';
+        }
         if (statusEntry && statusEntry.value !== '') {
             html += `<span class="tooltip-status">${escapeHtml(statusEntry.label)}</span>`;
         }

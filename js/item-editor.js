@@ -67,10 +67,12 @@ const ItemEditor = (() => {
             const selected = item.id === selectedItemId ? ' selected' : '';
             const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
             const memberHtml = member ? `<div class="member-avatar-tiny" style="background:${member.color};color:${State.getContrastColor(member.color)};" title="${escapeHtml(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
+            const highlightHtml = item.highlight ? '<span class="item-card-highlight" title="Destaque para stakeholders">★</span>' : '';
             return `
         <div class="item-card${selected}" data-id="${item.id}">
           <div class="item-card-dot" style="background:${color}"></div>
           <span class="item-card-title">${escapeHtml(item.title)}</span>
+          ${highlightHtml}
           ${memberHtml}
           <div class="item-card-actions">
             <button data-action="edit" data-id="${item.id}" title="Editar">✎</button>
@@ -189,6 +191,10 @@ const ItemEditor = (() => {
         <input type="checkbox" id="edit-intruder" ${item.intruder ? 'checked' : ''}>
         <label for="edit-intruder">Intruder</label>
       </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="edit-highlight" ${item.highlight ? 'checked' : ''}>
+        <label for="edit-highlight">Destaque para stakeholders</label>
+      </div>
       <div class="form-group">
         <label>Observação</label>
         <textarea id="edit-observacao" rows="2">${escapeHtml(item.observacao)}</textarea>
@@ -261,6 +267,7 @@ const ItemEditor = (() => {
         document.getElementById('edit-status').addEventListener('change', () => saveItem(id));
         document.getElementById('edit-type').addEventListener('change', () => saveItem(id));
         document.getElementById('edit-intruder').addEventListener('change', () => saveItem(id));
+        document.getElementById('edit-highlight').addEventListener('change', () => saveItem(id));
         const responsavelSelect = document.getElementById('edit-responsavel');
         if (responsavelSelect) responsavelSelect.addEventListener('change', () => saveItem(id));
 
@@ -312,6 +319,7 @@ const ItemEditor = (() => {
             status: document.getElementById('edit-status').value,
             responsavel: responsavelEl ? responsavelEl.value : (item.responsavel || ''),
             intruder: document.getElementById('edit-intruder').checked,
+            highlight: document.getElementById('edit-highlight').checked,
             observacao: document.getElementById('edit-observacao').value,
             segments: item.segments.map((seg, segIdx) => {
                 const startSel = formEl.querySelector(`[data-field="seg-start"][data-seg="${segIdx}"]`);

@@ -4,6 +4,9 @@ const Renderer = (() => {
     let sprints = [];
     let colWidth = 120;
     let selectedItemId = null;
+    let currentSprintIdx = -1;
+    let referenceDate = null;
+    let hasHighlight = false;
 
     // Drag state
     let dragState = null;
@@ -54,10 +57,12 @@ const Renderer = (() => {
         html += '</div>';
 
         html += `<div class="sprint-band" style="grid-template-columns: repeat(${sprintCount}, ${colWidth}px);">`;
-        sprints.forEach(s => {
+        sprints.forEach((s, idx) => {
             const label = `Sprint ${s.number}`;
             const dateRange = `${Engine.formatDateShort(s.startDate)} – ${Engine.formatDateShort(s.endDate)}`;
-            html += `<div class="sprint-cell"><span class="sprint-number">${label}</span><span class="sprint-dates">${dateRange}</span></div>`;
+            const cellClass = idx === currentSprintIdx ? 'sprint-cell sprint-cell-current' : 'sprint-cell';
+            const todayPill = idx === currentSprintIdx ? '<span class="sprint-today-pill">Hoje</span>' : '';
+            html += `<div class="${cellClass}">${todayPill}<span class="sprint-number">${label}</span><span class="sprint-dates">${dateRange}</span></div>`;
         });
         html += '</div>';
 
@@ -78,6 +83,16 @@ const Renderer = (() => {
                 html += `<div class="sprint-bg-alt" style="left: ${i * colWidth}px; width: ${colWidth}px;"></div>`;
             }
         }
+        if (currentSprintIdx >= 0 && referenceDate) {
+            html += `<div class="sprint-bg-current" style="left: ${currentSprintIdx * colWidth}px; width: ${colWidth}px;"></div>`;
+            const sprint = sprints[currentSprintIdx];
+            const totalDays = (sprint.endDate - sprint.startDate) / 86400000 + 1;
+            let dayInSprint = (referenceDate - sprint.startDate) / 86400000;
+            if (dayInSprint < 0) dayInSprint = 0;
+            if (dayInSprint > totalDays) dayInSprint = totalDays;
+            const px = currentSprintIdx * colWidth + (dayInSprint / totalDays) * colWidth;
+            html += `<div class="today-line" style="left: ${px}px;"></div>`;
+        }
         return html;
     }
 
@@ -91,6 +106,8 @@ const Renderer = (() => {
             border: State.darkenColor(typeEntry.color, 0.25)
         };
 
+        const currentSprintNumber = currentSprintIdx >= 0 ? sprints[currentSprintIdx].number : null;
+
         let html = '';
         item.segments.forEach((seg, segIdx) => {
             const startOffset = seg.startHalf ? 0.5 : 0;
@@ -103,6 +120,11 @@ const Renderer = (() => {
 
             let barClass = 'item-bar';
             if (item.intruder) barClass += ' intruder';
+            if (item.highlight) barClass += ' highlight';
+            else if (hasHighlight) barClass += ' dim';
+            if (currentSprintNumber !== null && seg.sprintStart <= currentSprintNumber && seg.sprintEnd >= currentSprintNumber) {
+                barClass += ' in-current-sprint';
+            }
             if (item.id === selectedItemId) barClass += ' selected';
 
             const statusEntry = cfgStatusTypes.find(s => s.value === item.status);
@@ -166,6 +188,12 @@ const Renderer = (() => {
         const trackCount = trackEntries.length ? Math.max(...trackEntries.map(e => e.track)) + 1 : 0;
         const sprintCount = sprints.length;
 
+        const refDateStr = (config.referenceDate || '').trim();
+        referenceDate = refDateStr ? new Date(refDateStr + 'T12:00:00') : new Date();
+        if (isNaN(referenceDate.getTime())) referenceDate = new Date();
+        currentSprintIdx = Engine.getCurrentSprintIndex(sprints, referenceDate);
+        hasHighlight = items.some(i => i.highlight);
+
         const wrapperEl = container.closest('.roadmap-wrapper');
         const panel = document.getElementById('side-panel');
         const panelOpen = panel && !panel.classList.contains('collapsed');
@@ -180,9 +208,15 @@ const Renderer = (() => {
         renderLegend();
 
         const gridHeight = Math.max(trackCount, 3) * 52 + 16;
+        const notes = (config.roadmapNotes || '').trim();
+        const notesHtml = notes
+            ? `<div class="roadmap-notes"><div class="roadmap-notes-title">Observações</div><div class="roadmap-notes-body">${escapeHtml(notes)}</div></div>`
+            : '';
+
         container.innerHTML =
             buildStickyHeader(sprintCount, monthBands) +
-            buildGrid(sprintCount, gridHeight, trackEntries);
+            buildGrid(sprintCount, gridHeight, trackEntries) +
+            notesHtml;
 
         const addBtn = document.getElementById('btn-roadmap-add');
         if (addBtn) {
