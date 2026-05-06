@@ -24,7 +24,9 @@ const State = (() => {
             { value: 'Finalizado', label: 'Finalizado', icon: '✓' },
             { value: 'PendenteSubida', label: 'Pendente de Subida', icon: '⏳' }
         ],
-        teamMembers: []
+        teamMembers: [],
+        roadmapNotes: '',
+        referenceDate: ''
     };
 
     let state = { config: { ...defaultConfig }, items: [] };
@@ -140,6 +142,7 @@ const State = (() => {
             title: item.title || 'Sem título',
             type: item.type || firstType,
             intruder: !!item.intruder,
+            highlight: !!item.highlight,
             status,
             responsavel: item.responsavel || '',
             observacao: item.observacao || '',
@@ -353,6 +356,7 @@ const State = (() => {
                     title: row.title || '',
                     type: row.type || 'EV',
                     intruder: row.intruder === 'true' || row.intruder === '1',
+                    highlight: row.highlight === 'true' || row.highlight === '1',
                     status: row.status || '',
                     responsavel: row.responsavel || '',
                     observacao: row.observacao || '',

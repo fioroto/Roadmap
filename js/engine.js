@@ -143,5 +143,17 @@ const Engine = (() => {
         return `${d}/${m}`;
     }
 
-    return { calculateSprints, calculateMonthBands, allocateTracks, clampSegments, formatDateShort, segEffectiveStart, segEffectiveEnd };
+    function getCurrentSprintIndex(sprints, refDate) {
+        if (!sprints.length) return -1;
+        const ref = refDate instanceof Date ? refDate : new Date();
+        const t = ref.getTime();
+        for (let i = 0; i < sprints.length; i++) {
+            const startMs = sprints[i].startDate.getTime();
+            const endMs = sprints[i].endDate.getTime() + 86399999;
+            if (t >= startMs && t <= endMs) return i;
+        }
+        return -1;
+    }
+
+    return { calculateSprints, calculateMonthBands, allocateTracks, clampSegments, formatDateShort, segEffectiveStart, segEffectiveEnd, getCurrentSprintIndex };
 })();
