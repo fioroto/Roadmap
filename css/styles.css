@@ -1214,11 +1214,11 @@ button:focus:not(:focus-visible),
 /* ── Modo Holofote (highlight / dim) ─────────────── */
 
 .item-bar.dim {
-    filter: saturate(0.25) opacity(0.45);
+    filter: grayscale(0.85) opacity(0.25);
 }
 
 .item-bar.dim:hover {
-    filter: saturate(0.7) opacity(0.9);
+    filter: grayscale(0.2) opacity(0.95);
 }
 
 .item-bar.highlight {
