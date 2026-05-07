@@ -6,7 +6,7 @@ const Renderer = (() => {
     let selectedItemId = null;
     let currentSprintIdx = -1;
     let referenceDate = null;
-    let hasHighlight = false;
+    let spotlightActive = false;
 
     // Drag state
     let dragState = null;
@@ -107,6 +107,8 @@ const Renderer = (() => {
         };
 
         const currentSprintNumber = currentSprintIdx >= 0 ? sprints[currentSprintIdx].number : null;
+        const itemInCurrentSprint = currentSprintNumber !== null
+            && item.segments.some(s => s.sprintStart <= currentSprintNumber && s.sprintEnd >= currentSprintNumber);
 
         let html = '';
         item.segments.forEach((seg, segIdx) => {
@@ -121,10 +123,8 @@ const Renderer = (() => {
             let barClass = 'item-bar';
             if (item.intruder) barClass += ' intruder';
             if (item.highlight) barClass += ' highlight';
-            else if (hasHighlight) barClass += ' dim';
-            if (currentSprintNumber !== null && seg.sprintStart <= currentSprintNumber && seg.sprintEnd >= currentSprintNumber) {
-                barClass += ' in-current-sprint';
-            }
+            else if (spotlightActive && !itemInCurrentSprint) barClass += ' dim';
+            if (itemInCurrentSprint) barClass += ' in-current-sprint';
             if (item.id === selectedItemId) barClass += ' selected';
 
             const statusEntry = cfgStatusTypes.find(s => s.value === item.status);
@@ -192,7 +192,7 @@ const Renderer = (() => {
         referenceDate = refDateStr ? new Date(refDateStr + 'T12:00:00') : new Date();
         if (isNaN(referenceDate.getTime())) referenceDate = new Date();
         currentSprintIdx = Engine.getCurrentSprintIndex(sprints, referenceDate);
-        hasHighlight = items.some(i => i.highlight);
+        spotlightActive = currentSprintIdx >= 0 || items.some(i => i.highlight);
 
         const wrapperEl = container.closest('.roadmap-wrapper');
         const panel = document.getElementById('side-panel');
