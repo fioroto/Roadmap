@@ -154,7 +154,7 @@ const ConfigPanel = (() => {
             squad: getVal('cfg-squad'),
             dataInicio: getVal('cfg-dataInicio'),
             dataFim: getVal('cfg-dataFim'),
-            diasSprint: parseInt(getVal('cfg-diasSprint'), 10) || 14,
+            diasSprint: Math.max(1, parseInt(getVal('cfg-diasSprint'), 10) || 14),
             sprintStartNumber: parseInt(getVal('cfg-sprintStartNumber'), 10) || 1,
             bgColor: getVal('cfg-bgColor') || '#0f172a',
             headerColor: getVal('cfg-headerColor') || '#1e293b',
