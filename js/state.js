@@ -89,7 +89,7 @@ const State = (() => {
     function setConfig(cfg) {
         pushHistory();
         state.config = { ...state.config, ...cfg };
-        state.config.diasSprint = parseInt(state.config.diasSprint, 10) || 14;
+        state.config.diasSprint = Math.max(1, parseInt(state.config.diasSprint, 10) || 14);
         state.config.sprintStartNumber = parseInt(state.config.sprintStartNumber, 10) || 1;
         save();
         emit('config:changed', state.config);
@@ -363,7 +363,12 @@ const State = (() => {
                     segments: []
                 };
             }
-            const segIdx = parseInt(row.segmentIndex, 10) || 0;
+            const MAX_SEGMENTS = 50;
+            let segIdx = parseInt(row.segmentIndex, 10);
+            if (!Number.isFinite(segIdx) || segIdx < 0) segIdx = 0;
+            if (segIdx >= MAX_SEGMENTS) {
+                throw new Error(`segmentIndex inválido (${segIdx}); máximo permitido é ${MAX_SEGMENTS - 1}`);
+            }
             while (itemMap[id].segments.length <= segIdx) {
                 itemMap[id].segments.push({ sprintStart: 0, sprintEnd: 0, delays: [] });
             }

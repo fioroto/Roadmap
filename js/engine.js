@@ -1,13 +1,17 @@
 const Engine = (() => {
+    const MAX_SPRINTS = 200;
+
     function calculateSprints(config) {
         const sprints = [];
         const start = new Date(config.dataInicio + 'T00:00:00');
         const end = new Date(config.dataFim + 'T00:00:00');
-        const days = config.diasSprint;
-        let num = config.sprintStartNumber;
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return sprints;
+        // Guard against non-positive day counts (would cause an infinite loop).
+        const days = Math.max(1, parseInt(config.diasSprint, 10) || 14);
+        let num = parseInt(config.sprintStartNumber, 10) || 1;
         let cur = new Date(start);
 
-        while (cur <= end) {
+        while (cur <= end && sprints.length < MAX_SPRINTS) {
             const sprintEnd = new Date(cur);
             sprintEnd.setDate(sprintEnd.getDate() + days - 1);
             sprints.push({
