@@ -13,14 +13,98 @@ const Renderer = (() => {
 
     function init(el) {
         container = el;
-        container.addEventListener('mousedown', onMouseDown);
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        container.addEventListener('pointerdown', onPointerDown);
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
+        container.addEventListener('keydown', onContainerKeyDown);
 
         // Tooltip via event delegation — single set of listeners for all bars.
         container.addEventListener('mouseover', onContainerMouseOver);
         container.addEventListener('mousemove', onContainerMouseMove);
         container.addEventListener('mouseout', onContainerMouseOut);
+    }
+
+    // Keyboard drag/resize — moves the focused bar's segment by half-sprint steps.
+    function onContainerKeyDown(e) {
+        const bar = e.target.closest('.item-bar');
+        if (!bar || !container.contains(bar)) return;
+        const itemId = bar.dataset.itemId;
+        const segIdx = parseInt(bar.dataset.segmentIndex, 10);
+
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            selectedItemId = itemId;
+            setSelectedItem(itemId);
+            switchToItemsTab();
+            State.emit('item:select', itemId);
+            return;
+        }
+
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (!sprints.length) return;
+        e.preventDefault();
+
+        const item = State.getItems().find(i => i.id === itemId);
+        if (!item) return;
+        const seg = item.segments[segIdx];
+        if (!seg) return;
+
+        const dir = e.key === 'ArrowLeft' ? -1 : 1;
+        const mode = e.shiftKey ? 'resize' : 'move';
+        const minSprint = sprints[0].number;
+        const maxSprint = sprints[sprints.length - 1].number;
+        const oldStart = seg.sprintStart;
+
+        if (!nudgeSegment(seg, dir, mode, minSprint, maxSprint)) return;
+
+        if (mode === 'move') {
+            const off = seg.sprintStart - oldStart;
+            (seg.delays || []).forEach(d => {
+                d.delaySprintStart = Math.max(seg.sprintStart, Math.min(seg.sprintEnd, d.delaySprintStart + off));
+                d.delaySprintEnd = Math.max(seg.sprintStart, Math.min(seg.sprintEnd, d.delaySprintEnd + off));
+            });
+        }
+
+        selectedItemId = itemId;
+        State.updateItem(itemId, { segments: item.segments });
+        refocusBar(itemId, segIdx);
+    }
+
+    // Move (mode 'move') or resize the right edge (mode 'resize') by one half-sprint,
+    // working in absolute half-sprint units. Returns false if the step is blocked.
+    function nudgeSegment(seg, dir, mode, minSprint, maxSprint) {
+        let leftH = seg.sprintStart * 2 + (seg.startHalf ? 1 : 0);
+        let rightH = seg.sprintEnd * 2 + 2 - (seg.endHalf ? 1 : 0);
+        const minH = minSprint * 2;
+        const maxH = maxSprint * 2 + 2;
+
+        if (mode === 'move') {
+            const nl = leftH + dir;
+            const nr = rightH + dir;
+            if (nl < minH || nr > maxH) return false;
+            leftH = nl; rightH = nr;
+        } else {
+            const nr = rightH + dir;
+            if (nr - leftH < 1 || nr > maxH) return false;
+            rightH = nr;
+        }
+
+        seg.sprintStart = Math.floor(leftH / 2);
+        seg.startHalf = (leftH % 2) === 1;
+        seg.sprintEnd = Math.ceil(rightH / 2) - 1;
+        seg.endHalf = (rightH % 2) === 1;
+        return true;
+    }
+
+    // The full innerHTML re-render destroys the focused bar; put focus back on it.
+    function refocusBar(itemId, segIdx) {
+        const bars = container.querySelectorAll('.item-bar');
+        for (const b of bars) {
+            if (b.dataset.itemId === itemId && b.dataset.segmentIndex === String(segIdx)) {
+                b.focus();
+                return;
+            }
+        }
     }
 
     function onContainerMouseOver(e) {
@@ -263,7 +347,9 @@ const Renderer = (() => {
 
     // ─── Drag & Drop / Resize ─────────────────────
 
-    function onMouseDown(e) {
+    function onPointerDown(e) {
+        // Only react to primary button / touch / pen contacts.
+        if (e.button !== undefined && e.button !== 0) return;
         const resizeHandle = e.target.closest('.resize-handle');
         const itemBar = e.target.closest('.item-bar');
 
@@ -272,6 +358,7 @@ const Renderer = (() => {
             e.stopPropagation();
             Tooltip.hide();
             startResize(resizeHandle, e);
+            capturePointer(e);
             return;
         }
 
@@ -283,10 +370,20 @@ const Renderer = (() => {
             switchToItemsTab();
             State.emit('item:select', itemId);
 
-            // Start drag on mousedown (will only activate after threshold)
+            // Start drag on pointerdown (will only activate after threshold)
             e.preventDefault();
             Tooltip.hide();
             startDrag(itemBar, e);
+            capturePointer(e);
+        }
+    }
+
+    // Capture the pointer on the dragged bar so move/up keep firing even if the
+    // pointer leaves the element (essential for touch, and avoids "stuck" drags).
+    function capturePointer(e) {
+        if (dragState && dragState.bar && e.pointerId !== undefined) {
+            dragState.pointerId = e.pointerId;
+            try { dragState.bar.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
         }
     }
 
@@ -336,7 +433,7 @@ const Renderer = (() => {
         bar.classList.add('dragging');
     }
 
-    function onMouseMove(e) {
+    function onPointerMove(e) {
         if (!dragState) return;
 
         const dx = e.clientX - dragState.startX;
@@ -385,11 +482,15 @@ const Renderer = (() => {
         return { sprintIdx, isHalf };
     }
 
-    function onMouseUp(e) {
+    function onPointerUp(e) {
         if (!dragState) return;
 
         const state = dragState;
         dragState = null;
+
+        if (state.pointerId !== undefined) {
+            try { state.bar.releasePointerCapture(state.pointerId); } catch (_) { /* ignore */ }
+        }
 
         state.bar.classList.remove('dragging');
         state.bar.style.opacity = '';

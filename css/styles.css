@@ -280,6 +280,8 @@ body {
     transition: filter var(--transition), transform var(--transition);
     z-index: 2;
     overflow: hidden;
+    /* Prevent the page from scrolling while dragging a bar on touch devices. */
+    touch-action: none;
 }
 
 .item-bar:hover {
@@ -346,6 +348,7 @@ body {
     cursor: col-resize;
     z-index: 10;
     transition: background 120ms ease;
+    touch-action: none;
 }
 
 .resize-handle-left {
