@@ -13,6 +13,9 @@ const ImportExport = (() => {
         document.getElementById('btn-export-html').addEventListener('click', exportHTMLWithPNG);
         document.getElementById('btn-export-png').addEventListener('click', exportPNGOnly);
 
+        const shareBtn = document.getElementById('btn-share-link');
+        if (shareBtn) shareBtn.addEventListener('click', buildShareLink);
+
         document.getElementById('btn-save-fs').addEventListener('click', async () => {
             try {
                 const ok = await State.saveToFileSystem();
@@ -301,7 +304,71 @@ const ImportExport = (() => {
         return div.innerHTML;
     }
 
-    return { init };
+    // ─── Link compartilhável (roadmap embutido na URL, sem servidor) ──
+    function bytesToBase64url(bytes) {
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function base64urlToBytes(b64) {
+        let s = b64.replace(/-/g, '+').replace(/_/g, '/');
+        while (s.length % 4) s += '=';
+        const bin = atob(s);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes;
+    }
+
+    async function buildShareLink() {
+        try {
+            const json = State.exportJSON();
+            const bytes = new TextEncoder().encode(json);
+            let payload;
+            if (typeof CompressionStream === 'function') {
+                const cs = new CompressionStream('gzip');
+                const writer = cs.writable.getWriter();
+                writer.write(bytes);
+                writer.close();
+                const buf = await new Response(cs.readable).arrayBuffer();
+                payload = 'g' + bytesToBase64url(new Uint8Array(buf));
+            } else {
+                payload = 'r' + bytesToBase64url(bytes);
+            }
+            const url = location.origin + location.pathname + '#d=' + payload;
+            if (url.length > 30000) {
+                showToast('Roadmap grande demais para link (' + Math.round(url.length / 1000) + 'k caracteres). Use Exportar JSON.', 'error');
+                return;
+            }
+            await navigator.clipboard.writeText(url);
+            showToast('Link copiado para a área de transferência', 'success');
+        } catch (e) {
+            showToast('Erro ao gerar link: ' + e.message, 'error');
+        }
+    }
+
+    // Decodes a `#d=` share payload (prefix 'g' = gzip, 'r' = raw) into an object.
+    async function decodeShareParam(param) {
+        const kind = param.charAt(0);
+        const bytes = base64urlToBytes(param.slice(1));
+        let json;
+        if (kind === 'g') {
+            if (typeof DecompressionStream !== 'function') {
+                throw new Error('Descompressão não suportada neste navegador');
+            }
+            const ds = new DecompressionStream('gzip');
+            const writer = ds.writable.getWriter();
+            writer.write(bytes);
+            writer.close();
+            const buf = await new Response(ds.readable).arrayBuffer();
+            json = new TextDecoder().decode(new Uint8Array(buf));
+        } else {
+            json = new TextDecoder().decode(bytes);
+        }
+        return JSON.parse(json);
+    }
+
+    return { init, buildShareLink, decodeShareParam };
 })();
 
 function showToast(message, type) {

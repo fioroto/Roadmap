@@ -225,6 +225,7 @@ const State = (() => {
     }
 
     function load() {
+        suppressSave = false;   // a fresh load is authoritative; re-enable persistence
         let raw;
         try {
             raw = localStorage.getItem(STORAGE_KEY);
@@ -343,6 +344,34 @@ const State = (() => {
         if (id === activeId) activeName = name.trim();
         save();
         emit('config:changed', state.config);
+    }
+
+    // ─── Preview de roadmap compartilhado (via URL) ──────
+    // Carrega o roadmap na cópia de trabalho SEM persistir (suppressSave),
+    // preservando os roadmaps reais do usuário no localStorage.
+    function previewShared(parsed) {
+        const source = parsed && parsed.version && parsed.data ? parsed.data : parsed;
+        if (!source || typeof source !== 'object') return;
+        suppressSave = true;
+        state.config = { ...defaultConfig, ...(source.config || {}) };
+        state.items = normalizeItems(source.items || []);
+        history.length = 0; future.length = 0;
+        emit('config:changed', state.config);
+        emit('state:changed', state);
+    }
+
+    // Converte o roadmap em preview num roadmap salvo de verdade.
+    function commitShared(name) {
+        suppressSave = false;
+        const id = generateTypeId('rm');
+        activeId = id;
+        activeName = (name && name.trim()) || 'Compartilhado';
+        roadmaps[id] = { name: activeName, config: state.config, items: state.items };
+        history.length = 0; future.length = 0;
+        save();
+        emit('config:changed', state.config);
+        emit('state:changed', state);
+        return id;
     }
 
     function exportJSON() {
@@ -542,6 +571,7 @@ const State = (() => {
         generateTypeId, getContrastColor, darkenColor,
         listRoadmaps, getActiveRoadmapId, switchRoadmap,
         createRoadmap, deleteRoadmap, renameRoadmap,
+        previewShared, commitShared,
         undo, redo,
         on, emit
     };
