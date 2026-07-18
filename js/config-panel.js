@@ -93,6 +93,16 @@ const ConfigPanel = (() => {
         const applyBtn = document.getElementById('btn-apply-config');
         if (applyBtn) applyBtn.addEventListener('click', applyConfig);
 
+        // Quick theme presets — a single setConfig so it's one undo step.
+        const THEME_PRESETS = {
+            dark: { bgColor: '#0f172a', headerColor: '#1e293b', monthBandColor: '#1e293b', sprintBandColor: '#334155' },
+            light: { bgColor: '#f8fafc', headerColor: '#e2e8f0', monthBandColor: '#e2e8f0', sprintBandColor: '#cbd5e1' }
+        };
+        const darkBtn = document.getElementById('btn-theme-dark');
+        const lightBtn = document.getElementById('btn-theme-light');
+        if (darkBtn) darkBtn.addEventListener('click', () => State.setConfig({ ...THEME_PRESETS.dark }));
+        if (lightBtn) lightBtn.addEventListener('click', () => State.setConfig({ ...THEME_PRESETS.light }));
+
         populateForm();
         renderTypeManagement();
         State.on('config:changed', populateForm);
