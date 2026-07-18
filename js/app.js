@@ -78,6 +78,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
     Renderer.render();
 
+    // ── Roadmap compartilhado via URL (#d=...) ──
+    function showSharedBanner() {
+        if (document.getElementById('shared-banner')) return;
+        const banner = document.createElement('div');
+        banner.id = 'shared-banner';
+        banner.className = 'shared-banner';
+
+        const label = document.createElement('span');
+        label.textContent = 'Você está vendo um roadmap compartilhado (ainda não salvo).';
+        banner.appendChild(label);
+
+        const importBtn = document.createElement('button');
+        importBtn.className = 'btn btn-primary btn-sm';
+        importBtn.textContent = 'Importar para meus roadmaps';
+        importBtn.addEventListener('click', () => {
+            State.commitShared('Compartilhado');
+            history.replaceState(null, '', location.pathname + location.search);
+            banner.remove();
+            showToast('Roadmap importado', 'success');
+        });
+        banner.appendChild(importBtn);
+
+        const discardBtn = document.createElement('button');
+        discardBtn.className = 'btn btn-secondary btn-sm';
+        discardBtn.textContent = 'Descartar';
+        discardBtn.addEventListener('click', () => {
+            State.load();
+            history.replaceState(null, '', location.pathname + location.search);
+            applyColors(State.getConfig());
+            Renderer.render();
+            banner.remove();
+        });
+        banner.appendChild(discardBtn);
+
+        document.body.appendChild(banner);
+    }
+
+    const hash = location.hash || '';
+    if (hash.startsWith('#d=')) {
+        ImportExport.decodeShareParam(hash.slice(3))
+            .then(parsed => {
+                State.previewShared(parsed);
+                showSharedBanner();
+            })
+            .catch(err => showToast('Link compartilhado inválido: ' + err.message, 'error'));
+    }
+
     // ─── Keyboard shortcuts ─────────────────────────────
     let lastSelectedId = null;
     State.on('item:select', (id) => { lastSelectedId = id; });
