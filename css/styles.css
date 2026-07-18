@@ -1214,6 +1214,34 @@ button:focus:not(:focus-visible),
     pointer-events: none;
 }
 
+/* ── Marcos (milestones) ─────────────── */
+
+.milestone-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0.85;
+}
+
+.milestone-flag {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    max-width: 140px;
+    padding: 1px 6px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
 /* ── Modo Holofote (highlight / dim) ─────────────── */
 
 .item-bar.dim {

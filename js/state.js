@@ -25,6 +25,7 @@ const State = (() => {
             { value: 'PendenteSubida', label: 'Pendente de Subida', icon: '⏳' }
         ],
         teamMembers: [],
+        milestones: [],
         roadmapNotes: '',
         referenceDate: ''
     };
@@ -85,6 +86,7 @@ const State = (() => {
     function getItemTypes() { return state.config.itemTypes || defaultConfig.itemTypes; }
     function getStatusTypes() { return state.config.statusTypes || defaultConfig.statusTypes; }
     function getTeamMembers() { return state.config.teamMembers || []; }
+    function getMilestones() { return state.config.milestones || []; }
 
     function setConfig(cfg) {
         pushHistory();
@@ -428,7 +430,7 @@ const State = (() => {
         exportJSON, importJSON, importConfigFromTSV,
         importConfigFromCSV, importItemsFromCSV,
         saveToFileSystem, loadFromFileSystem,
-        getItemTypes, getStatusTypes, getTeamMembers,
+        getItemTypes, getStatusTypes, getTeamMembers, getMilestones,
         generateTypeId, getContrastColor, darkenColor,
         undo, redo,
         on, emit

@@ -154,6 +154,34 @@ const Renderer = (() => {
         return html;
     }
 
+    // Guards a color value before it goes into an inline style attribute. Colors
+    // can arrive from imported JSON/CSV, so anything not a #rrggbb hex is rejected.
+    function sanitizeColor(c) {
+        return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#6b7280';
+    }
+
+    // Maps a date to a horizontal pixel offset within the rendered timeline,
+    // or null when the date falls outside the roadmap period.
+    function dateToPx(date) {
+        if (!sprints.length || !(date instanceof Date) || isNaN(date.getTime())) return null;
+        const t = date.getTime();
+        if (t < sprints[0].startDate.getTime()) return null;
+        if (t > sprints[sprints.length - 1].endDate.getTime() + 86399999) return null;
+        for (let i = 0; i < sprints.length; i++) {
+            const s = sprints[i];
+            const startMs = s.startDate.getTime();
+            const endMs = s.endDate.getTime() + 86399999;
+            if (t >= startMs && t <= endMs) {
+                const totalDays = (s.endDate - s.startDate) / 86400000 + 1;
+                let dayInSprint = (date - s.startDate) / 86400000;
+                if (dayInSprint < 0) dayInSprint = 0;
+                if (dayInSprint > totalDays) dayInSprint = totalDays;
+                return i * colWidth + (dayInSprint / totalDays) * colWidth;
+            }
+        }
+        return null;
+    }
+
     function buildGridBackground(sprintCount) {
         let html = '';
         for (let i = 1; i < sprintCount; i++) {
@@ -169,14 +197,20 @@ const Renderer = (() => {
         }
         if (currentSprintIdx >= 0 && referenceDate) {
             html += `<div class="sprint-bg-current" style="left: ${currentSprintIdx * colWidth}px; width: ${colWidth}px;"></div>`;
-            const sprint = sprints[currentSprintIdx];
-            const totalDays = (sprint.endDate - sprint.startDate) / 86400000 + 1;
-            let dayInSprint = (referenceDate - sprint.startDate) / 86400000;
-            if (dayInSprint < 0) dayInSprint = 0;
-            if (dayInSprint > totalDays) dayInSprint = totalDays;
-            const px = currentSprintIdx * colWidth + (dayInSprint / totalDays) * colWidth;
-            html += `<div class="today-line" style="left: ${px}px;"></div>`;
+            const px = dateToPx(referenceDate);
+            if (px !== null) html += `<div class="today-line" style="left: ${px}px;"></div>`;
         }
+
+        // Milestones — vertical markers with a labeled flag, positioned by date.
+        State.getMilestones().forEach(m => {
+            if (!m || !m.date) return;
+            const px = dateToPx(new Date(m.date + 'T12:00:00'));
+            if (px === null) return;
+            const color = sanitizeColor(m.color);
+            html += `<div class="milestone-line" style="left: ${px}px; background: ${color};">` +
+                `<span class="milestone-flag" style="background: ${color}; color: ${State.getContrastColor(color)};">${escapeHtml(m.label || '')}</span>` +
+                `</div>`;
+        });
         return html;
     }
 

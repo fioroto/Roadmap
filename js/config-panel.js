@@ -233,6 +233,20 @@ const ConfigPanel = (() => {
                 `).join('')}
             </div>
             <button class="btn btn-secondary btn-sm btn-block" id="btn-add-member">+ Membro</button>
+
+            <div class="editor-divider"></div>
+            <div class="config-section-title">Marcos</div>
+            <div class="type-list" id="milestones-list">
+                ${(State.getMilestones()).map((m, i) => `
+                    <div class="type-row">
+                        <input type="date" class="milestone-date-input" value="${escapeAttr(m.date || '')}" data-idx="${i}" style="flex:1;min-width:0;">
+                        <input type="text" class="milestone-label-input" value="${escapeAttr(m.label || '')}" data-idx="${i}" placeholder="Rótulo" style="flex:1;min-width:0;">
+                        <input type="color" class="milestone-color-picker" value="${escapeAttr(/^#[0-9a-fA-F]{6}$/.test(m.color) ? m.color : '#ef4444')}" data-idx="${i}" style="width:32px;height:28px;padding:2px;border-radius:4px;cursor:pointer;flex-shrink:0;">
+                        <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="milestone">✕</button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-milestone">+ Marco</button>
         `;
 
         bindTypeManagementEvents(container, itemTypes, statusTypes);
@@ -277,6 +291,54 @@ const ConfigPanel = (() => {
                 State.setConfig({ teamMembers: teamMembers.filter((_, i) => i !== idx) });
             });
         });
+
+        // Milestone events
+        const milestones = State.getMilestones();
+        container.querySelector('#btn-add-milestone').addEventListener('click', () => {
+            const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+            const color = colors[milestones.length % colors.length];
+            const date = State.getConfig().dataInicio || '';
+            const newMs = [...milestones, { id: State.generateTypeId('ms'), date, label: 'Novo Marco', color }];
+            State.setConfig({ milestones: newMs });
+        });
+
+        container.querySelectorAll('.milestone-date-input').forEach(input => {
+            input.addEventListener('input', () => {
+                const idx = parseInt(input.dataset.idx, 10);
+                _skipTypeRerender = true;
+                State.setConfig({ milestones: milestones.map((m, i) => i === idx ? { ...m, date: input.value } : m) });
+                _skipTypeRerender = false;
+            });
+        });
+
+        container.querySelectorAll('.milestone-label-input').forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(typeDebounceTimer);
+                typeDebounceTimer = setTimeout(() => {
+                    const idx = parseInt(input.dataset.idx, 10);
+                    _skipTypeRerender = true;
+                    State.setConfig({ milestones: milestones.map((m, i) => i === idx ? { ...m, label: input.value } : m) });
+                    _skipTypeRerender = false;
+                }, 300);
+            });
+        });
+
+        container.querySelectorAll('.milestone-color-picker').forEach(picker => {
+            picker.addEventListener('input', () => {
+                const idx = parseInt(picker.dataset.idx, 10);
+                _skipTypeRerender = true;
+                State.setConfig({ milestones: milestones.map((m, i) => i === idx ? { ...m, color: picker.value } : m) });
+                _skipTypeRerender = false;
+            });
+        });
+
+        container.querySelectorAll('[data-kind="milestone"].type-delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.idx, 10);
+                State.setConfig({ milestones: milestones.filter((_, i) => i !== idx) });
+            });
+        });
+
         container.querySelector('#btn-add-item-type').addEventListener('click', () => {
             const newTypes = [...itemTypes, {
                 value: State.generateTypeId('it'),
@@ -303,10 +365,11 @@ const ConfigPanel = (() => {
                 if (kind === 'item') {
                     if (itemTypes.length <= 1) return;
                     State.setConfig({ itemTypes: itemTypes.filter((_, i) => i !== idx) });
-                } else {
+                } else if (kind === 'status') {
                     if (statusTypes[idx] && statusTypes[idx].value === '') return;
                     State.setConfig({ statusTypes: statusTypes.filter((_, i) => i !== idx) });
                 }
+                // kind 'member'/'milestone' handled by their own dedicated listeners.
             });
         });
 
