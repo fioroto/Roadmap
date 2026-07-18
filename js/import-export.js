@@ -225,24 +225,17 @@ const ImportExport = (() => {
         }
     }
 
-    // ─── Export HTML + PNG ────────────────
+    // ─── Export HTML (arquivo único, PNG embutido como data URI) ──
     async function exportHTMLWithPNG() {
         try {
-            showToast('Gerando HTML + PNG...', 'success');
+            showToast('Gerando HTML...', 'success');
             const canvas = await captureRoadmapCanvas();
             const baseName = getExportFileName();
-            const pngFileName = baseName + '.png';
 
-            // Download PNG first
-            const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            const pngUrl = URL.createObjectURL(pngBlob);
-            const pngLink = document.createElement('a');
-            pngLink.href = pngUrl;
-            pngLink.download = pngFileName;
-            pngLink.click();
-            URL.revokeObjectURL(pngUrl);
+            // Embed the image directly so the HTML is a single self-contained file
+            // that opens offline (file://) with no companion PNG.
+            const dataUri = canvas.toDataURL('image/png');
 
-            // Build HTML that references the PNG with relative path (same folder)
             const config = State.getConfig();
             const htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -275,24 +268,20 @@ const ImportExport = (() => {
 <body>
     <h1>ROADMAP ${escapeHtmlStr(config.periodo)}</h1>
     <div class="subtitle">${escapeHtmlStr(config.squad)}</div>
-    <img class="roadmap-img" src="./${escapeHtmlStr(pngFileName)}" alt="Roadmap ${escapeHtmlStr(config.periodo)}">
+    <img class="roadmap-img" src="${dataUri}" alt="Roadmap ${escapeHtmlStr(config.periodo)}">
     <div class="footer">Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</div>
 </body>
 </html>`;
 
-            // Download HTML
             const htmlBlob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
             const htmlUrl = URL.createObjectURL(htmlBlob);
             const htmlLink = document.createElement('a');
             htmlLink.href = htmlUrl;
             htmlLink.download = baseName + '.html';
-            // Small delay to avoid browser blocking second download
-            setTimeout(() => {
-                htmlLink.click();
-                URL.revokeObjectURL(htmlUrl);
-            }, 500);
+            htmlLink.click();
+            URL.revokeObjectURL(htmlUrl);
 
-            showToast('HTML + PNG exportados com sucesso! Salve ambos na mesma pasta.', 'success');
+            showToast('HTML exportado com sucesso (arquivo único).', 'success');
         } catch (e) {
             showToast('Erro ao exportar HTML: ' + e.message, 'error');
         }
