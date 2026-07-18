@@ -1,6 +1,6 @@
 const State = (() => {
     const STORAGE_KEY = 'roadmap-planner-data';
-    const SCHEMA_VERSION = 1;
+    const SCHEMA_VERSION = 2;
 
     const defaultConfig = {
         periodo: 'Q1/2026',
@@ -32,6 +32,14 @@ const State = (() => {
 
     let state = { config: { ...defaultConfig }, items: [] };
     const listeners = {};
+
+    // ─── Múltiplos roadmaps ──────────────────────────────
+    // `state` is always the ACTIVE roadmap (working copy). `roadmaps` holds every
+    // roadmap's payload; on save() the active one is synced back into it.
+    let roadmaps = {};      // id -> { name, config, items }
+    let activeId = null;
+    let activeName = 'Roadmap 1';
+    let suppressSave = false;   // true while previewing a shared roadmap (see previewShared)
 
     // ─── History (undo/redo) ─────────────────────────────
     const MAX_HISTORY = 50;
@@ -188,8 +196,11 @@ const State = (() => {
     }
 
     function save() {
+        if (suppressSave) return;
         try {
-            const payload = { version: SCHEMA_VERSION, data: state };
+            if (!activeId) activeId = generateTypeId('rm');
+            roadmaps[activeId] = { name: activeName, config: state.config, items: state.items };
+            const payload = { version: SCHEMA_VERSION, activeId, roadmaps };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
         } catch (e) {
             if (typeof showToast === 'function') {
@@ -200,30 +211,67 @@ const State = (() => {
         }
     }
 
+    function initDefaultRoadmap() {
+        activeId = generateTypeId('rm');
+        activeName = 'Roadmap 1';
+        state.config = { ...defaultConfig };
+        state.items = [];
+        roadmaps = { [activeId]: { name: activeName, config: state.config, items: state.items } };
+    }
+
+    function loadActiveInto(slot) {
+        state.config = { ...defaultConfig, ...(slot.config || {}) };
+        state.items = normalizeItems(slot.items);
+    }
+
     function load() {
         let raw;
         try {
             raw = localStorage.getItem(STORAGE_KEY);
         } catch (e) {
             console.warn('[State] localStorage unavailable:', e);
+            initDefaultRoadmap();
             return;
         }
-        if (!raw) return;
+        if (!raw) { initDefaultRoadmap(); return; }
 
         let parsed;
         try {
             parsed = JSON.parse(raw);
         } catch (e) {
             console.warn('[State] saved data is not valid JSON; using defaults:', e);
+            initDefaultRoadmap();
             return;
         }
 
+        // v2: envelope with multiple roadmaps.
+        if (parsed && parsed.version === 2 && parsed.roadmaps && typeof parsed.roadmaps === 'object') {
+            roadmaps = {};
+            Object.keys(parsed.roadmaps).forEach(id => {
+                const r = parsed.roadmaps[id] || {};
+                roadmaps[id] = {
+                    name: r.name || 'Roadmap',
+                    config: { ...defaultConfig, ...(r.config || {}) },
+                    items: normalizeItems(r.items)
+                };
+            });
+            const ids = Object.keys(roadmaps);
+            if (!ids.length) { initDefaultRoadmap(); return; }
+            activeId = roadmaps[parsed.activeId] ? parsed.activeId : ids[0];
+            activeName = roadmaps[activeId].name;
+            state.config = roadmaps[activeId].config;
+            state.items = roadmaps[activeId].items;
+            return;
+        }
+
+        // Legacy v0/v1 → wrap as a single roadmap and persist in v2 shape.
         const migrated = migrate(parsed);
+        activeId = generateTypeId('rm');
+        activeName = 'Roadmap 1';
         state.config = { ...defaultConfig, ...(migrated.config || {}) };
         state.items = normalizeItems(migrated.items);
-
-        // If we migrated from a legacy format, persist in the new shape.
-        if (!parsed.version) save();
+        roadmaps = { [activeId]: { name: activeName, config: state.config, items: state.items } };
+        save();
     }
 
     function migrate(parsed) {
@@ -235,6 +283,66 @@ const State = (() => {
         }
         const data = parsed.data || {};
         return { config: data.config || {}, items: data.items || [] };
+    }
+
+    // ─── API de múltiplos roadmaps ───────────────────────
+    function listRoadmaps() {
+        return Object.keys(roadmaps).map(id => ({ id, name: roadmaps[id].name }));
+    }
+
+    function getActiveRoadmapId() { return activeId; }
+
+    function switchRoadmap(id) {
+        if (!roadmaps[id] || id === activeId) return;
+        save();                       // persist the current active roadmap first
+        activeId = id;
+        activeName = roadmaps[id].name;
+        loadActiveInto(roadmaps[id]);
+        history.length = 0; future.length = 0;   // undo history is per-roadmap
+        save();
+        emit('config:changed', state.config);
+        emit('state:changed', state);
+    }
+
+    function createRoadmap(name) {
+        save();
+        const id = generateTypeId('rm');
+        activeId = id;
+        activeName = (name && name.trim()) || 'Novo Roadmap';
+        state.config = { ...defaultConfig };
+        state.items = [];
+        roadmaps[id] = { name: activeName, config: state.config, items: state.items };
+        history.length = 0; future.length = 0;
+        save();
+        emit('config:changed', state.config);
+        emit('state:changed', state);
+        return id;
+    }
+
+    function deleteRoadmap(id) {
+        if (!roadmaps[id]) return;
+        const wasActive = (id === activeId);
+        delete roadmaps[id];
+        let ids = Object.keys(roadmaps);
+        if (!ids.length) {
+            initDefaultRoadmap();
+        } else if (wasActive) {
+            activeId = ids[0];
+            activeName = roadmaps[activeId].name;
+            loadActiveInto(roadmaps[activeId]);
+            history.length = 0; future.length = 0;
+        }
+        save();
+        emit('config:changed', state.config);
+        emit('state:changed', state);
+    }
+
+    function renameRoadmap(id, name) {
+        if (!roadmaps[id] || !name || !name.trim()) return;
+        roadmaps[id].name = name.trim();
+        if (id === activeId) activeName = name.trim();
+        save();
+        emit('config:changed', state.config);
     }
 
     function exportJSON() {
@@ -432,6 +540,8 @@ const State = (() => {
         saveToFileSystem, loadFromFileSystem,
         getItemTypes, getStatusTypes, getTeamMembers, getMilestones,
         generateTypeId, getContrastColor, darkenColor,
+        listRoadmaps, getActiveRoadmapId, switchRoadmap,
+        createRoadmap, deleteRoadmap, renameRoadmap,
         undo, redo,
         on, emit
     };

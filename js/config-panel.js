@@ -93,6 +93,35 @@ const ConfigPanel = (() => {
         const applyBtn = document.getElementById('btn-apply-config');
         if (applyBtn) applyBtn.addEventListener('click', applyConfig);
 
+        // Roadmap selector (multiple roadmaps)
+        const selector = document.getElementById('roadmap-selector');
+        if (selector) {
+            selector.addEventListener('change', () => State.switchRoadmap(selector.value));
+        }
+        const newBtn = document.getElementById('btn-roadmap-new');
+        if (newBtn) newBtn.addEventListener('click', () => {
+            const name = prompt('Nome do novo roadmap:', 'Novo Roadmap');
+            if (name && name.trim()) State.createRoadmap(name.trim());
+        });
+        const renameBtn = document.getElementById('btn-roadmap-rename');
+        if (renameBtn) renameBtn.addEventListener('click', () => {
+            const id = State.getActiveRoadmapId();
+            const current = (State.listRoadmaps().find(r => r.id === id) || {}).name || '';
+            const name = prompt('Renomear roadmap:', current);
+            if (name && name.trim()) State.renameRoadmap(id, name.trim());
+        });
+        const delBtn = document.getElementById('btn-roadmap-delete');
+        if (delBtn) delBtn.addEventListener('click', () => {
+            const list = State.listRoadmaps();
+            if (list.length <= 1) {
+                if (typeof showToast === 'function') showToast('É necessário manter ao menos um roadmap', 'error');
+                return;
+            }
+            const id = State.getActiveRoadmapId();
+            const current = (list.find(r => r.id === id) || {}).name || '';
+            if (confirm(`Excluir o roadmap "${current}"? Esta ação não pode ser desfeita.`)) State.deleteRoadmap(id);
+        });
+
         // Quick theme presets — a single setConfig so it's one undo step.
         const THEME_PRESETS = {
             dark: { bgColor: '#0f172a', headerColor: '#1e293b', monthBandColor: '#1e293b', sprintBandColor: '#334155' },
@@ -119,6 +148,16 @@ const ConfigPanel = (() => {
 
     function populateForm() {
         const cfg = State.getConfig();
+
+        const selector = document.getElementById('roadmap-selector');
+        if (selector) {
+            const list = State.listRoadmaps();
+            const active = State.getActiveRoadmapId();
+            selector.innerHTML = list.map(r =>
+                `<option value="${escapeAttr(r.id)}"${r.id === active ? ' selected' : ''}>${escapeHtml(r.name)}</option>`
+            ).join('');
+        }
+
         setVal('cfg-periodo', cfg.periodo);
         setVal('cfg-squad', cfg.squad);
         setVal('cfg-dataInicio', cfg.dataInicio);
