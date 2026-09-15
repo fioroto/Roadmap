@@ -7,6 +7,9 @@ const Renderer = (() => {
     let currentSprintIdx = -1;
     let referenceDate = null;
     let spotlightActive = false;
+    let layout = null;          // Engine.computeLayout result of the last render
+
+    const ZOOM_WIDTHS = { compact: 80, normal: 120, wide: 180 };
 
     // Drag state
     let dragState = null;
@@ -22,6 +25,25 @@ const Renderer = (() => {
         container.addEventListener('mouseover', onContainerMouseOver);
         container.addEventListener('mousemove', onContainerMouseMove);
         container.addEventListener('mouseout', onContainerMouseOut);
+
+        // Lane collapse toggles are re-created on every render; delegate once.
+        container.addEventListener('click', (e) => {
+            const toggle = e.target.closest('.lane-toggle');
+            if (!toggle || !container.contains(toggle)) return;
+            e.preventDefault();
+            if (typeof Views !== 'undefined') Views.toggleLaneCollapsed(toggle.dataset.laneId || '');
+        });
+    }
+
+    // View state lives in Views (session); fall back to defaults when absent (tests).
+    function viewState() {
+        if (typeof Views !== 'undefined' && Views.getViewState) return Views.getViewState();
+        return { filters: null, colorBy: 'type', zoom: 'auto', showDependencies: true, showProgress: true, collapsedLaneIds: [] };
+    }
+
+    // Re-render through the dispatcher so non-timeline views stay in charge.
+    function rerender() {
+        if (typeof Views !== 'undefined' && Views.render) Views.render(); else render();
     }
 
     // Keyboard drag/resize — moves the focused bar's segment by half-sprint steps.
@@ -97,6 +119,7 @@ const Renderer = (() => {
     }
 
     // The full innerHTML re-render destroys the focused bar; put focus back on it.
+    // If the bar is gone (filtered out / lane collapsed) keep focus in the container.
     function refocusBar(itemId, segIdx) {
         const bars = container.querySelectorAll('.item-bar');
         for (const b of bars) {
@@ -105,27 +128,28 @@ const Renderer = (() => {
                 return;
             }
         }
+        container.focus();
     }
 
     function onContainerMouseOver(e) {
         if (dragState) return;
-        const bar = e.target.closest('.item-bar');
+        const bar = e.target.closest('.item-bar, .item-bar-mini');
         if (!bar || !container.contains(bar)) return;
         // Only fire on entering the bar (not on inner element transitions).
         if (bar.contains(e.relatedTarget)) return;
         const itemId = bar.dataset.itemId;
-        const segIdx = parseInt(bar.dataset.segmentIndex, 10);
+        const segIdx = parseInt(bar.dataset.segmentIndex, 10) || 0;
         const item = State.getItems().find(i => i.id === itemId);
         if (item) Tooltip.show(e, item, segIdx, sprints);
     }
 
     function onContainerMouseMove(e) {
         if (dragState) return;
-        if (e.target.closest('.item-bar')) Tooltip.position(e);
+        if (e.target.closest('.item-bar, .item-bar-mini')) Tooltip.position(e);
     }
 
     function onContainerMouseOut(e) {
-        const bar = e.target.closest('.item-bar');
+        const bar = e.target.closest('.item-bar, .item-bar-mini');
         if (!bar) return;
         if (bar.contains(e.relatedTarget)) return;
         Tooltip.hide();
@@ -158,6 +182,12 @@ const Renderer = (() => {
     // can arrive from imported JSON/CSV, so anything not a #rrggbb hex is rejected.
     function sanitizeColor(c) {
         return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#6b7280';
+    }
+
+    function hexToRgba(hex, alpha) {
+        const h = sanitizeColor(hex).slice(1);
+        const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
     // Maps a date to a horizontal pixel offset within the rendered timeline,
@@ -214,19 +244,45 @@ const Renderer = (() => {
         return html;
     }
 
-    function buildItemBar(entry, minSprint, cfgItemTypes, cfgStatusTypes, teamMembers) {
+    // Bar color by the active "color by" dimension.
+    function resolveBarColor(item, colorBy, ctx) {
+        if (colorBy === 'lane') {
+            const lane = ctx.lanes.find(l => l.id === item.laneId);
+            return sanitizeColor(lane ? lane.color : Engine.UNASSIGNED_LANE.color);
+        }
+        if (colorBy === 'health') {
+            const h = ctx.healthTypes.find(x => x.value === item.health);
+            return sanitizeColor(h && h.color ? h.color : '#64748b');
+        }
+        if (colorBy === 'member') {
+            const m = ctx.teamMembers.find(x => x.id === item.responsavel);
+            return sanitizeColor(m ? m.color : '#64748b');
+        }
+        const typeEntry = ctx.itemTypes.find(t => t.value === item.type) || ctx.itemTypes[0] || { color: '#6b7280' };
+        return sanitizeColor(typeEntry.color);
+    }
+
+    function buildItemBar(entry, laneOut, minSprint, ctx) {
         const item = entry.item;
         const track = entry.track;
-        const typeEntry = cfgItemTypes.find(t => t.value === item.type) || cfgItemTypes[0] || { color: '#6b7280' };
+        const baseColor = resolveBarColor(item, ctx.colorBy, ctx);
         const typeColor = {
-            bg: typeEntry.color,
-            text: State.getContrastColor(typeEntry.color),
-            border: State.darkenColor(typeEntry.color, 0.25)
+            bg: baseColor,
+            text: State.getContrastColor(baseColor),
+            border: State.darkenColor(baseColor, 0.25)
         };
 
         const currentSprintNumber = currentSprintIdx >= 0 ? sprints[currentSprintIdx].number : null;
         const itemInCurrentSprint = currentSprintNumber !== null
             && item.segments.some(s => s.sprintStart <= currentSprintNumber && s.sprintEnd >= currentSprintNumber);
+
+        const healthEntry = item.health ? ctx.healthTypes.find(h => h.value === item.health) : null;
+        const healthHtml = healthEntry && healthEntry.color
+            ? `<span class="health-dot health-${escapeAttr(item.health)}" title="${escapeAttr(healthEntry.label)}"></span>`
+            : '';
+        const progressHtml = ctx.showProgress && item.progress > 0
+            ? `<div class="item-bar-progress" style="width:${item.progress}%;"></div>`
+            : '';
 
         let html = '';
         item.segments.forEach((seg, segIdx) => {
@@ -236,7 +292,7 @@ const Renderer = (() => {
             const span = seg.sprintEnd - seg.sprintStart + 1 + endOffset - startOffset;
             const left = startCol * colWidth;
             const width = span * colWidth;
-            const top = track * 52 + 8;
+            const top = Engine.barTopFor(laneOut, track);
 
             let barClass = 'item-bar';
             if (item.intruder) barClass += ' intruder';
@@ -244,21 +300,27 @@ const Renderer = (() => {
             else if (spotlightActive && !itemInCurrentSprint) barClass += ' dim';
             if (itemInCurrentSprint) barClass += ' in-current-sprint';
             if (item.id === selectedItemId) barClass += ' selected';
+            if (item.confidence === 'medium') barClass += ' conf-medium';
+            else if (item.confidence === 'low') barClass += ' conf-low';
+            if (ctx.doneIds.has(item.id)) barClass += ' is-done';
 
-            const statusEntry = cfgStatusTypes.find(s => s.value === item.status);
+            const statusEntry = ctx.statusTypes.find(s => s.value === item.status);
             const statusIcon = statusEntry ? (statusEntry.icon || '') : '';
             const statusHtml = statusIcon ? `<span class="item-status-icon">${escapeHtml(statusIcon)}</span>` : '';
 
-            const dataAttrs = `data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-track="${track}"`;
+            const dataAttrs = `data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-track="${track}" data-lane-id="${escapeAttr(laneOut.lane.id)}"`;
 
-            const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
-            const memberAvatarHtml = member ? `<div class="item-bar-avatar" style="background:${member.color};color:${State.getContrastColor(member.color)};" title="${escapeAttr(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
+            const member = item.responsavel ? ctx.teamMembers.find(m => m.id === item.responsavel) : null;
+            const memberAvatarHtml = member ? `<div class="item-bar-avatar" style="background:${sanitizeColor(member.color)};color:${State.getContrastColor(member.color)};" title="${escapeAttr(member.name)}">${escapeHtml(member.name[0].toUpperCase())}</div>` : '';
 
             html += `<div class="${barClass}" ${dataAttrs} role="button" tabindex="0" aria-label="${escapeAttr(item.title)}" style="left:${left}px; width:${width}px; top:${top}px; background:${typeColor.bg}; color:${typeColor.text}; border-color:${typeColor.border};">`;
+            html += progressHtml;
             html += `<div class="resize-handle resize-handle-left" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-side="left" role="button" aria-label="Redimensionar início"></div>`;
+            html += healthHtml;
             html += memberAvatarHtml;
             html += `<span class="item-title">${escapeHtml(item.title)}</span>`;
             html += statusHtml;
+            if (ctx.showProgress && item.progress > 0) html += `<span class="item-progress-label">${item.progress}%</span>`;
 
             (seg.delays || []).forEach(delay => {
                 const dStart = delay.delaySprintStart - seg.sprintStart;
@@ -274,17 +336,84 @@ const Renderer = (() => {
         return html;
     }
 
-    function buildGrid(sprintCount, gridHeight, trackEntries) {
-        const minSprint = sprints[0].number;
-        const cfgItemTypes = State.getItemTypes();
-        const cfgStatusTypes = State.getStatusTypes();
-        const teamMembers = State.getTeamMembers();
-
-        let html = `<div class="roadmap-grid" id="roadmap-grid" style="width: ${sprintCount * colWidth}px; min-height: ${gridHeight}px; position: relative;">`;
-        html += buildGridBackground(sprintCount);
-        trackEntries.forEach(entry => {
-            html += buildItemBar(entry, minSprint, cfgItemTypes, cfgStatusTypes, teamMembers);
+    // Collapsed lane: thin, non-interactive bars (tooltip only — no .item-bar class,
+    // so drag / keyboard handlers ignore them).
+    function buildMiniBars(laneOut, minSprint, ctx) {
+        let html = '';
+        const top = laneOut.top + Engine.LANE_HEADER_H + 4;
+        laneOut.entries.forEach(entry => {
+            const item = entry.item;
+            const color = resolveBarColor(item, ctx.colorBy, ctx);
+            item.segments.forEach((seg, segIdx) => {
+                const startOffset = seg.startHalf ? 0.5 : 0;
+                const endOffset = seg.endHalf ? -0.5 : 0;
+                const left = ((seg.sprintStart - minSprint) + startOffset) * colWidth;
+                const width = (seg.sprintEnd - seg.sprintStart + 1 + endOffset - startOffset) * colWidth;
+                html += `<div class="item-bar-mini" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" title="${escapeAttr(item.title)}" style="left:${left}px; width:${width}px; top:${top}px; background:${color};"></div>`;
+            });
         });
+        return html;
+    }
+
+    function buildLaneHeader(laneOut, gridWidth) {
+        const lane = laneOut.lane;
+        const color = sanitizeColor(lane.color);
+        const count = laneOut.entries.length;
+        const chevron = laneOut.collapsed ? '▸' : '▾';
+        const desc = (lane.description || '').trim();
+        let html = `<div class="lane-band${laneOut.collapsed ? ' lane-band-collapsed' : ''}" style="top:${laneOut.top}px; height:${laneOut.height}px; width:${gridWidth}px; background:${hexToRgba(color, 0.05)};"></div>`;
+        html += `<div class="lane-header" data-lane-id="${escapeAttr(lane.id)}" style="top:${laneOut.top}px; width:${gridWidth}px;">`;
+        html += '<div class="lane-header-inner">';
+        html += `<button type="button" class="lane-toggle" data-lane-id="${escapeAttr(lane.id)}" aria-expanded="${laneOut.collapsed ? 'false' : 'true'}" aria-label="${laneOut.collapsed ? 'Expandir' : 'Recolher'} trilha ${escapeAttr(lane.name)}">${chevron}</button>`;
+        html += `<span class="lane-color" style="background:${color};"></span>`;
+        html += `<span class="lane-name">${escapeHtml(lane.name)}</span>`;
+        if (desc) html += `<span class="lane-desc" title="${escapeAttr(desc)}">${escapeHtml(desc)}</span>`;
+        html += `<span class="lane-count">${count} ${count === 1 ? 'item' : 'itens'}</span>`;
+        html += '</div></div>';
+        return html;
+    }
+
+    // Dependency arrows. No <marker> (ids would duplicate in the export clone and
+    // html2canvas is unreliable with markers): the arrowhead is a polygon per edge.
+    function buildDependencyLayer(edges, width, height) {
+        if (!edges.length) return '';
+        let html = `<svg class="dep-layer" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" aria-hidden="true">`;
+        edges.forEach(e => {
+            const dx = Math.max(24, Math.abs(e.x2 - e.x1) / 2);
+            const d = `M ${e.x1} ${e.y1} C ${e.x1 + dx} ${e.y1}, ${e.x2 - dx} ${e.y2}, ${e.x2} ${e.y2}`;
+            const cls = 'dep-edge' + (e.conflict ? ' dep-conflict' : '');
+            html += `<g class="${cls}" data-from="${escapeAttr(e.fromId)}" data-to="${escapeAttr(e.toId)}">`;
+            html += `<path d="${d}" fill="none"></path>`;
+            html += `<polygon points="${e.x2},${e.y2} ${e.x2 - 9},${e.y2 - 4.5} ${e.x2 - 9},${e.y2 + 4.5}"></polygon>`;
+            html += '</g>';
+        });
+        html += '</svg>';
+        return html;
+    }
+
+    function buildGrid(sprintCount, gridHeight, visibleItems, ctx) {
+        const minSprint = sprints[0].number;
+        const gridWidth = sprintCount * colWidth;
+
+        let html = `<div class="roadmap-grid${layout.hasLanes ? ' has-lanes' : ''}" id="roadmap-grid" style="width: ${gridWidth}px; min-height: ${gridHeight}px; position: relative;">`;
+        html += buildGridBackground(sprintCount);
+
+        layout.lanes.forEach(laneOut => {
+            if (laneOut.showHeader) html += buildLaneHeader(laneOut, gridWidth);
+            if (laneOut.collapsed) {
+                html += buildMiniBars(laneOut, minSprint, ctx);
+                return;
+            }
+            laneOut.entries.forEach(entry => {
+                html += buildItemBar(entry, laneOut, minSprint, ctx);
+            });
+        });
+
+        if (ctx.showDependencies) {
+            const edges = Engine.computeDependencyEdges(visibleItems, layout, colWidth, minSprint);
+            html += buildDependencyLayer(edges, gridWidth, gridHeight);
+        }
+
         html += '</div>';
         return html;
     }
@@ -292,40 +421,54 @@ const Renderer = (() => {
     function render() {
         if (!container) return;
         const config = State.getConfig();
-        const items = State.getItems();
+        const allItems = State.getItems();
+        const vs = viewState();
         sprints = Engine.calculateSprints(config);
 
         if (!sprints.length) {
+            layout = null;
             container.innerHTML = '<div class="roadmap-empty">Configure as datas para gerar o roadmap.</div>';
             return;
         }
 
         const monthBands = Engine.calculateMonthBands(sprints);
-        const clampedItems = Engine.clampSegments(items, sprints);
-        const trackEntries = Engine.allocateTracks(clampedItems, sprints);
-        const trackCount = trackEntries.length ? Math.max(...trackEntries.map(e => e.track)) + 1 : 0;
+        const visibleItems = Engine.clampSegments(Engine.filterItems(allItems, vs.filters), sprints);
+        layout = Engine.computeLayout(visibleItems, sprints, State.getLanes(), vs.collapsedLaneIds);
         const sprintCount = sprints.length;
 
         const refDateStr = (config.referenceDate || '').trim();
         referenceDate = refDateStr ? new Date(refDateStr + 'T12:00:00') : new Date();
         if (isNaN(referenceDate.getTime())) referenceDate = new Date();
         currentSprintIdx = Engine.getCurrentSprintIndex(sprints, referenceDate);
-        spotlightActive = currentSprintIdx >= 0 || items.some(i => i.highlight);
+        spotlightActive = currentSprintIdx >= 0 || visibleItems.some(i => i.highlight);
 
         const wrapperEl = container.closest('.roadmap-wrapper');
         const panel = document.getElementById('side-panel');
         const panelOpen = panel && !panel.classList.contains('collapsed');
         const availableWidth = wrapperEl.clientWidth - (panelOpen ? 380 : 0);
-        colWidth = Math.max(80, Math.floor(availableWidth / sprintCount));
+        colWidth = ZOOM_WIDTHS[vs.zoom] || Math.max(80, Math.floor(availableWidth / sprintCount));
 
         const headerEl = document.getElementById('roadmap-title');
         const subtitleEl = document.getElementById('roadmap-subtitle');
         if (headerEl) headerEl.textContent = `ROADMAP ${config.periodo}`;
         if (subtitleEl) subtitleEl.textContent = config.squad;
 
-        renderLegend();
+        const statusTypes = State.getStatusTypes();
+        const ctx = {
+            colorBy: vs.colorBy,
+            showProgress: vs.showProgress !== false,
+            showDependencies: vs.showDependencies !== false,
+            itemTypes: State.getItemTypes(),
+            statusTypes,
+            teamMembers: State.getTeamMembers(),
+            lanes: State.getLanes(),
+            healthTypes: State.getHealthTypes(),
+            doneIds: new Set(visibleItems.filter(i => Engine.isDone(i, statusTypes)).map(i => i.id))
+        };
 
-        const gridHeight = Math.max(trackCount, 3) * 52 + 16;
+        renderLegend(ctx, visibleItems);
+
+        const gridHeight = Math.max(layout.totalHeight, 3 * Engine.ROW_H + 16);
         const notes = (config.roadmapNotes || '').trim();
         const notesHtml = notes
             ? `<div class="roadmap-notes"><div class="roadmap-notes-title">Observações</div><div class="roadmap-notes-body">${escapeHtml(notes)}</div></div>`
@@ -333,8 +476,10 @@ const Renderer = (() => {
 
         container.innerHTML =
             buildStickyHeader(sprintCount, monthBands) +
-            buildGrid(sprintCount, gridHeight, trackEntries) +
+            buildGrid(sprintCount, gridHeight, visibleItems, ctx) +
             notesHtml;
+
+        applyDependencyHighlight(selectedItemId);
 
         const addBtn = document.getElementById('btn-roadmap-add');
         if (addBtn) {
@@ -345,11 +490,22 @@ const Renderer = (() => {
         }
     }
 
+    // Selection never re-renders (a re-render mid-pointerdown would detach the
+    // bar being dragged); it only toggles classes.
     function setSelectedItem(id) {
         selectedItemId = id;
-        // Highlight on roadmap without full re-render
         container.querySelectorAll('.item-bar').forEach(bar => {
             bar.classList.toggle('selected', bar.dataset.itemId === id);
+        });
+        applyDependencyHighlight(id);
+    }
+
+    function applyDependencyHighlight(id) {
+        const edges = container.querySelectorAll('.dep-edge');
+        edges.forEach(g => {
+            const mine = !!id && (g.dataset.from === id || g.dataset.to === id);
+            g.classList.toggle('dep-active', mine);
+            g.classList.toggle('dep-muted', !!id && !mine);
         });
     }
 
@@ -357,9 +513,12 @@ const Renderer = (() => {
         const cfg = State.getConfig();
         const firstType = (cfg.itemTypes && cfg.itemTypes[0]) ? cfg.itemTypes[0].value : 'EV';
         const defaultSprint = sprints.length ? sprints[0].number : 1;
+        const filters = viewState().filters || {};
+        const laneId = filters.laneId && filters.laneId !== '__none__' ? filters.laneId : '';
         const id = State.addItem({
             title: 'Novo Item',
             type: firstType,
+            laneId,
             intruder: false,
             status: '',
             observacao: '',
@@ -424,8 +583,6 @@ const Renderer = (() => {
     function startDrag(bar, e) {
         const grid = document.getElementById('roadmap-grid');
         if (!grid) return;
-        const gridRect = grid.getBoundingClientRect();
-        const barRect = bar.getBoundingClientRect();
 
         dragState = {
             type: 'move',
@@ -433,10 +590,6 @@ const Renderer = (() => {
             segIdx: parseInt(bar.dataset.segmentIndex, 10),
             startX: e.clientX,
             startY: e.clientY,
-            offsetX: e.clientX - barRect.left,
-            offsetY: e.clientY - barRect.top,
-            gridLeft: gridRect.left + container.scrollLeft,
-            gridTop: gridRect.top + container.scrollTop,
             bar,
             moved: false,
             originalLeft: bar.offsetLeft,
@@ -449,7 +602,6 @@ const Renderer = (() => {
         if (!bar) return;
         const grid = document.getElementById('roadmap-grid');
         if (!grid) return;
-        const gridRect = grid.getBoundingClientRect();
 
         dragState = {
             type: 'resize',
@@ -458,7 +610,6 @@ const Renderer = (() => {
             segIdx: parseInt(handle.dataset.segmentIndex, 10),
             startX: e.clientX,
             bar,
-            gridLeft: gridRect.left + container.scrollLeft,
             moved: false,
             originalLeft: bar.offsetLeft,
             originalWidth: bar.offsetWidth
@@ -516,6 +667,18 @@ const Renderer = (() => {
         return { sprintIdx, isHalf };
     }
 
+    // Lane under the dropped bar, only when the pointer clearly moved vertically
+    // (a purely horizontal drag must never change the lane by accident).
+    function laneForDrop(state, item, e) {
+        if (!layout || !layout.hasLanes) return item.laneId;
+        const dy = Math.abs(e.clientY - state.startY);
+        if (dy < Engine.ROW_H / 2) return item.laneId;
+        const centerY = parseFloat(state.bar.style.top) + Engine.BAR_H / 2;
+        const target = Engine.laneAtY(layout, centerY);
+        if (target === undefined) return item.laneId;
+        return target;
+    }
+
     function onPointerUp(e) {
         if (!dragState) return;
 
@@ -567,6 +730,9 @@ const Renderer = (() => {
             const newEndHalf = (endHalves % 2) === 0; // endHalf means ends at middle
             const newSprintEnd = minSprint + endSprintIdx;
 
+            const newLaneId = laneForDrop(state, item, e);
+            const laneChanged = newLaneId !== item.laneId;
+
             if (newSprintEnd <= maxSprint) {
                 const intOffset = newSprintStart - seg.sprintStart;
                 seg.sprintStart = newSprintStart;
@@ -578,9 +744,11 @@ const Renderer = (() => {
                     d.delaySprintStart = Math.max(newSprintStart, Math.min(newSprintEnd, d.delaySprintStart + intOffset));
                     d.delaySprintEnd = Math.max(newSprintStart, Math.min(newSprintEnd, d.delaySprintEnd + intOffset));
                 });
-                State.updateItem(state.itemId, { segments: item.segments });
+                State.updateItem(state.itemId, { segments: item.segments, laneId: newLaneId });
+            } else if (laneChanged) {
+                State.updateItem(state.itemId, { laneId: newLaneId });
             } else {
-                render();
+                rerender();
             }
         } else if (state.type === 'resize') {
             const barLeft = parseFloat(state.bar.style.left);
@@ -599,7 +767,7 @@ const Renderer = (() => {
                     seg.startHalf = newStartHalf;
                     State.updateItem(state.itemId, { segments: item.segments });
                 } else {
-                    render();
+                    rerender();
                 }
             } else {
                 const snappedRight = snapToHalf(barLeft + barWidth);
@@ -616,32 +784,48 @@ const Renderer = (() => {
                     seg.endHalf = isEndHalf;
                     State.updateItem(state.itemId, { segments: item.segments });
                 } else {
-                    render();
+                    rerender();
                 }
             }
         }
     }
 
-    function renderLegend() {
+    function renderLegend(ctx, visibleItems) {
         const legendEl = document.getElementById('roadmap-legend');
         if (!legendEl) return;
 
-        const itemTypes = State.getItemTypes();
-        const statusTypes = State.getStatusTypes();
-
         let html = '';
-        itemTypes.forEach(t => {
-            const textColor = State.getContrastColor(t.color);
-            html += `<span class="legend-chip" style="background:${t.color}; color:${textColor};">${escapeHtml(t.label)}</span>`;
-        });
+        const chip = (color, label) => `<span class="legend-chip" style="background:${sanitizeColor(color)}; color:${State.getContrastColor(sanitizeColor(color))};">${escapeHtml(label)}</span>`;
+
+        if (ctx.colorBy === 'lane') {
+            ctx.lanes.forEach(l => { html += chip(l.color, l.name); });
+            if (visibleItems.some(i => !ctx.lanes.some(l => l.id === i.laneId))) html += chip(Engine.UNASSIGNED_LANE.color, Engine.UNASSIGNED_LANE.name);
+        } else if (ctx.colorBy === 'health') {
+            ctx.healthTypes.forEach(h => { if (h.color) html += chip(h.color, h.label); });
+        } else if (ctx.colorBy === 'member') {
+            ctx.teamMembers.forEach(m => { html += chip(m.color, m.name); });
+        } else {
+            ctx.itemTypes.forEach(t => { html += chip(t.color, t.label); });
+        }
 
         html += '<span class="legend-chip legend-chip-outline intruder-chip">Intruder</span>';
-        statusTypes.forEach(s => {
+        ctx.statusTypes.forEach(s => {
             if (s.value !== '' && s.icon) {
                 html += `<span class="legend-chip legend-chip-status"><span class="status-icon">${escapeHtml(s.icon)}</span> ${escapeHtml(s.label)}</span>`;
             }
         });
         html += '<span class="legend-chip legend-chip-delay">Delay</span>';
+
+        // Signals only when in use, to keep the legend short.
+        if (ctx.colorBy !== 'health' && visibleItems.some(i => i.health)) {
+            ctx.healthTypes.forEach(h => {
+                if (!h.color) return;
+                html += `<span class="legend-chip legend-chip-status"><span class="health-dot health-${escapeAttr(h.value)}"></span> ${escapeHtml(h.label)}</span>`;
+            });
+        }
+        if (visibleItems.some(i => i.confidence === 'medium')) html += '<span class="legend-chip legend-chip-outline legend-conf-medium">Provável</span>';
+        if (visibleItems.some(i => i.confidence === 'low')) html += '<span class="legend-chip legend-chip-outline legend-conf-low">Exploratório</span>';
+        if (ctx.showDependencies && visibleItems.some(i => i.dependsOn.length)) html += '<span class="legend-chip legend-chip-status"><span class="legend-dep-arrow">→</span> Dependência</span>';
 
         legendEl.innerHTML = html;
     }
@@ -663,6 +847,7 @@ const Renderer = (() => {
 
     function getSprints() { return sprints; }
     function getColWidth() { return colWidth; }
+    function getLayout() { return layout; }
 
-    return { init, render, getSprints, getColWidth, setSelectedItem };
+    return { init, render, getSprints, getColWidth, getLayout, setSelectedItem, switchToItemsTab };
 })();

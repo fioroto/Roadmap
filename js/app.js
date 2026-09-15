@@ -5,10 +5,14 @@ document.addEventListener('DOMContentLoaded', () => {
     Tooltip.init();
     ConfigPanel.init();
     ItemEditor.init();
+    Views.init();
     ImportExport.init();
 
-    State.on('state:changed', () => Renderer.render());
-    State.on('config:changed', () => Renderer.render());
+    // Every redraw goes through the Views dispatcher (timeline / table / board).
+    State.on('state:changed', () => Views.render());
+    State.on('config:changed', () => Views.render());
+    State.on('view:changed', () => Views.render());
+    State.on('filters:changed', () => Views.render());
     State.on('item:select', (id) => Renderer.setSelectedItem(id));
 
     // If main text is light (dark bg), return a lighter muted gray; else a darker one.
@@ -70,13 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleBtn.textContent = collapsed ? '▶' : '◀';
             toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
             // Re-render roadmap after panel transition completes (200ms)
-            setTimeout(() => Renderer.render(), 210);
+            setTimeout(() => Views.render(), 210);
         });
     }
 
     applyColors(State.getConfig());
 
-    Renderer.render();
+    Views.render();
 
     // ── Roadmap compartilhado via URL (#d=...) ──
     function showSharedBanner() {
@@ -107,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
             State.load();
             history.replaceState(null, '', location.pathname + location.search);
             applyColors(State.getConfig());
-            Renderer.render();
+            Views.render();
             banner.remove();
         });
         banner.appendChild(discardBtn);

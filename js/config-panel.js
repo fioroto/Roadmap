@@ -242,7 +242,25 @@ const ConfigPanel = (() => {
         const itemTypes = State.getItemTypes();
         const statusTypes = State.getStatusTypes();
 
+        const lanes = State.getLanes();
+
         container.innerHTML = `
+            <div class="editor-divider"></div>
+            <div class="config-section-title">Trilhas <span class="form-hint">(tema, objetivo ou frente — viram faixas no roadmap)</span></div>
+            <div class="type-list" id="lanes-list">
+                ${lanes.map((l, i) => `
+                    <div class="type-row lane-row">
+                        <input type="color" class="lane-color-picker" value="${escapeAttr(l.color)}" data-id="${escapeAttr(l.id)}" style="width:32px;height:28px;padding:2px;border-radius:4px;cursor:pointer;flex-shrink:0;">
+                        <input type="text" class="lane-name-input" value="${escapeAttr(l.name)}" data-id="${escapeAttr(l.id)}" placeholder="Nome">
+                        <input type="text" class="lane-desc-input" value="${escapeAttr(l.description)}" data-id="${escapeAttr(l.id)}" placeholder="Objetivo / descrição">
+                        <button class="btn btn-secondary btn-sm lane-move-btn" data-id="${escapeAttr(l.id)}" data-dir="-1" title="Mover para cima" ${i === 0 ? 'disabled' : ''}>↑</button>
+                        <button class="btn btn-secondary btn-sm lane-move-btn" data-id="${escapeAttr(l.id)}" data-dir="1" title="Mover para baixo" ${i === lanes.length - 1 ? 'disabled' : ''}>↓</button>
+                        <button class="btn btn-danger btn-sm lane-delete-btn" data-id="${escapeAttr(l.id)}" title="Excluir trilha (itens ficam sem trilha)">✕</button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-lane">+ Trilha</button>
+
             <div class="editor-divider"></div>
             <div class="config-section-title">Tipos de Item</div>
             <div class="type-list" id="item-types-list">
@@ -263,6 +281,7 @@ const ConfigPanel = (() => {
                     <div class="type-row">
                         <input type="text" class="type-icon-input" value="${escapeAttr(s.icon)}" data-idx="${i}" data-kind="status" placeholder="ícone" style="width:42px;text-align:center;flex-shrink:0;">
                         <input type="text" class="type-label-input" value="${escapeAttr(s.label)}" data-idx="${i}" data-kind="status" placeholder="Rótulo">
+                        <label class="type-done-label" title="Itens neste status contam como concluídos"><input type="checkbox" class="type-done-input" data-idx="${i}" ${s.done ? 'checked' : ''} ${s.value === '' ? 'disabled' : ''}> conclui</label>
                         <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="status" ${s.value === '' ? 'disabled' : ''}>✕</button>
                     </div>
                 `).join('')}
@@ -303,6 +322,59 @@ const ConfigPanel = (() => {
 
     function bindTypeManagementEvents(container, itemTypes, statusTypes) {
         const teamMembers = State.getTeamMembers();
+
+        // Lane events. Handlers read State.getLanes() at event time (never the
+        // array captured at bind time) so a debounced name edit followed by a
+        // color change doesn't write the stale name back.
+        container.querySelector('#btn-add-lane').addEventListener('click', () => {
+            State.addLane('Nova trilha');
+        });
+
+        container.querySelectorAll('.lane-name-input, .lane-desc-input').forEach(input => {
+            const field = input.classList.contains('lane-name-input') ? 'name' : 'description';
+            input.addEventListener('input', () => {
+                clearTimeout(typeDebounceTimer);
+                typeDebounceTimer = setTimeout(() => {
+                    _skipTypeRerender = true;
+                    State.updateLane(input.dataset.id, { [field]: input.value });
+                    _skipTypeRerender = false;
+                }, 300);
+            });
+        });
+
+        container.querySelectorAll('.lane-color-picker').forEach(picker => {
+            picker.addEventListener('input', () => {
+                _skipTypeRerender = true;
+                State.updateLane(picker.dataset.id, { color: picker.value });
+                _skipTypeRerender = false;
+            });
+            picker.addEventListener('change', () => renderTypeManagement());
+        });
+
+        container.querySelectorAll('.lane-move-btn').forEach(btn => {
+            btn.addEventListener('click', () => State.moveLane(btn.dataset.id, parseInt(btn.dataset.dir, 10)));
+        });
+
+        container.querySelectorAll('.lane-delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const lane = State.getLanes().find(l => l.id === btn.dataset.id);
+                if (!lane) return;
+                const count = State.getItems().filter(i => i.laneId === lane.id).length;
+                const msg = count
+                    ? `Excluir a trilha "${lane.name}"? ${count} ${count === 1 ? 'item ficará' : 'itens ficarão'} sem trilha.`
+                    : `Excluir a trilha "${lane.name}"?`;
+                if (confirm(msg)) State.deleteLane(lane.id);
+            });
+        });
+
+        container.querySelectorAll('.type-done-input').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const idx = parseInt(cb.dataset.idx, 10);
+                _skipTypeRerender = true;
+                State.setConfig({ statusTypes: State.getStatusTypes().map((s, i) => i === idx ? { ...s, done: cb.checked } : s) });
+                _skipTypeRerender = false;
+            });
+        });
 
         // Team member events
         container.querySelector('#btn-add-member').addEventListener('click', () => {
