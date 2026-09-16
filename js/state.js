@@ -61,7 +61,8 @@ const State = (() => {
     // ─── Múltiplos roadmaps ──────────────────────────────
     // `state` is always the ACTIVE roadmap (working copy). `roadmaps` holds every
     // roadmap's payload; on save() the active one is synced back into it.
-    let roadmaps = {};      // id -> { name, config, items }
+    let roadmaps = {};      // id -> { name, config, items, baselines }
+    let baselines = [];     // snapshots of the ACTIVE roadmap's items (never part of undo history)
     let activeId = null;
     let activeName = 'Roadmap 1';
     let suppressSave = false;   // true while previewing a shared roadmap (see previewShared)
@@ -359,7 +360,7 @@ const State = (() => {
         if (suppressSave) return;
         try {
             if (!activeId) activeId = generateTypeId('rm');
-            roadmaps[activeId] = { name: activeName, config: state.config, items: state.items };
+            roadmaps[activeId] = { name: activeName, config: state.config, items: state.items, baselines };
             const payload = { version: SCHEMA_VERSION, activeId, roadmaps };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
         } catch (e) {
@@ -376,12 +377,14 @@ const State = (() => {
         activeName = 'Roadmap 1';
         state.config = normalizeConfig({});
         state.items = [];
-        roadmaps = { [activeId]: { name: activeName, config: state.config, items: state.items } };
+        baselines = [];
+        roadmaps = { [activeId]: { name: activeName, config: state.config, items: state.items, baselines } };
     }
 
     function loadActiveInto(slot) {
         state.config = normalizeConfig(slot.config);
         state.items = normalizeItems(slot.items);
+        baselines = normalizeBaselines(slot.baselines);
     }
 
     function load() {
@@ -417,7 +420,8 @@ const State = (() => {
                 roadmaps[id] = {
                     name: r.name || 'Roadmap',
                     config: state.config,
-                    items: normalizeItems(r.items)
+                    items: normalizeItems(r.items),
+                    baselines: normalizeBaselines(r.baselines)
                 };
             });
             const ids = Object.keys(roadmaps);
@@ -426,6 +430,7 @@ const State = (() => {
             activeName = roadmaps[activeId].name;
             state.config = roadmaps[activeId].config;
             state.items = roadmaps[activeId].items;
+            baselines = roadmaps[activeId].baselines;
             if (parsed.version !== SCHEMA_VERSION) save();
             return;
         }
@@ -436,7 +441,8 @@ const State = (() => {
         activeName = 'Roadmap 1';
         state.config = normalizeConfig(migrated.config);
         state.items = normalizeItems(migrated.items);
-        roadmaps = { [activeId]: { name: activeName, config: state.config, items: state.items } };
+        baselines = [];
+        roadmaps = { [activeId]: { name: activeName, config: state.config, items: state.items, baselines } };
         save();
     }
 
@@ -477,7 +483,8 @@ const State = (() => {
         activeName = (name && name.trim()) || 'Novo Roadmap';
         state.config = normalizeConfig({});
         state.items = [];
-        roadmaps[id] = { name: activeName, config: state.config, items: state.items };
+        baselines = [];
+        roadmaps[id] = { name: activeName, config: state.config, items: state.items, baselines };
         history.length = 0; future.length = 0;
         save();
         emit('config:changed', state.config);
@@ -520,6 +527,7 @@ const State = (() => {
         suppressSave = true;
         state.config = normalizeConfig(source.config);
         state.items = normalizeItems(source.items || []);
+        baselines = normalizeBaselines(source.baselines);
         history.length = 0; future.length = 0;
         emit('config:changed', state.config);
         emit('state:changed', state);
@@ -531,7 +539,7 @@ const State = (() => {
         const id = generateTypeId('rm');
         activeId = id;
         activeName = (name && name.trim()) || 'Compartilhado';
-        roadmaps[id] = { name: activeName, config: state.config, items: state.items };
+        roadmaps[id] = { name: activeName, config: state.config, items: state.items, baselines };
         history.length = 0; future.length = 0;
         save();
         emit('config:changed', state.config);
@@ -539,7 +547,51 @@ const State = (() => {
         return id;
     }
 
-    function exportJSON() {
+    // ─── Linhas de base (baselines) ──────────────────────
+    // A baseline is a frozen copy of the items, used to answer "what changed
+    // since the last review". Stored beside config/items in the roadmap slot,
+    // never inside `state`, so undo snapshots and share links stay small.
+    function normalizeBaselines(list) {
+        return (Array.isArray(list) ? list : [])
+            .filter(b => b && typeof b === 'object')
+            .map(b => ({
+                id: b.id || generateTypeId('bl'),
+                name: (b.name || 'Linha de base').toString(),
+                createdAt: b.createdAt || new Date().toISOString(),
+                items: normalizeItems(b.items),
+                milestones: Array.isArray(b.milestones) ? b.milestones.map(m => ({ ...m })) : []
+            }));
+    }
+
+    function getBaselines() { return baselines; }
+
+    function saveBaseline(name) {
+        const baseline = {
+            id: generateTypeId('bl'),
+            name: (name && name.trim()) || ('Linha de base ' + (baselines.length + 1)),
+            createdAt: new Date().toISOString(),
+            items: JSON.parse(JSON.stringify(state.items)),
+            milestones: JSON.parse(JSON.stringify(state.config.milestones || []))
+        };
+        baselines = [...baselines, baseline];
+        save();
+        emit('baselines:changed', baselines);
+        return baseline.id;
+    }
+
+    function deleteBaseline(id) {
+        if (!baselines.some(b => b.id === id)) return;
+        baselines = baselines.filter(b => b.id !== id);
+        save();
+        emit('baselines:changed', baselines);
+    }
+
+    // Share links and the undo history use the bare { config, items } shape;
+    // the JSON file also carries the baselines.
+    function exportJSON(opts) {
+        if (opts && opts.includeBaselines) {
+            return JSON.stringify({ config: state.config, items: state.items, baselines }, null, 2);
+        }
         return JSON.stringify(state, null, 2);
     }
 
@@ -550,6 +602,10 @@ const State = (() => {
         pushHistory();
         if (source.config) state.config = normalizeConfig(source.config);
         state.items = normalizeItems(source.items || []);
+        if (Array.isArray(source.baselines)) {
+            baselines = normalizeBaselines(source.baselines);
+            emit('baselines:changed', baselines);
+        }
         save();
         emit('config:changed', state.config);
         emit('state:changed', state);
@@ -767,7 +823,7 @@ const State = (() => {
                 types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
             });
             const writable = await handle.createWritable();
-            await writable.write(exportJSON());
+            await writable.write(exportJSON({ includeBaselines: true }));
             await writable.close();
             State._lastFileHandle = handle;
             return true;
@@ -806,6 +862,7 @@ const State = (() => {
         listRoadmaps, getActiveRoadmapId, switchRoadmap,
         createRoadmap, deleteRoadmap, renameRoadmap,
         previewShared, commitShared,
+        getBaselines, saveBaseline, deleteBaseline,
         undo, redo,
         on, emit
     };

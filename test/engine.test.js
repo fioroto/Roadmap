@@ -158,3 +158,25 @@ test('computeSummary counts', () => {
     const empty = Engine.computeSummary([], sprints, ref, STATUS);
     assert.equal(empty.donePct, 0);
 });
+
+test('diffAgainstBaseline: added / removed / moved / completed / changedLane', () => {
+    const baseline = [
+        item('a', 1, 1),
+        item('b', 2, 3),
+        item('c', 1, 1, { laneId: 'L1' }),
+        item('gone', 4, 4)
+    ];
+    const now = [
+        item('a', 1, 1),                                   // unchanged
+        item('b', 3, 4, { status: 'Finalizado' }),          // moved + completed
+        item('c', 1, 1, { laneId: 'L2' }),                   // lane changed
+        item('new', 2, 2)                                    // added
+    ];
+    const d = Engine.diffAgainstBaseline(now, baseline, STATUS);
+    assert.deepEqual(d.added.map(i => i.id), ['new']);
+    assert.deepEqual(d.removed.map(i => i.id), ['gone']);
+    assert.deepEqual(d.moved.map(m => [m.item.id, m.from.start, m.from.end, m.to.start, m.to.end]), [['b', 2, 3, 3, 4]]);
+    assert.deepEqual(d.completed.map(i => i.id), ['b']);
+    assert.deepEqual(d.changedLane.map(c => [c.item.id, c.fromLaneId, c.toLaneId]), [['c', 'L1', 'L2']]);
+    assert.equal(d.unchanged, 1);
+});

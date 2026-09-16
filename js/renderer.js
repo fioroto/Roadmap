@@ -262,6 +262,23 @@ const Renderer = (() => {
         return sanitizeColor(typeEntry.color);
     }
 
+    // Baseline ghost: the item's previous position, drawn behind the live bar.
+    function buildGhostBars(item, laneOut, track, minSprint, ctx) {
+        const old = ctx.baseline && ctx.baseline.byId.get(item.id);
+        if (!old || !ctx.baseline.movedIds.has(item.id)) return '';
+        let html = '';
+        const top = Engine.barTopFor(laneOut, track);
+        old.segments.forEach(seg => {
+            const startOffset = seg.startHalf ? 0.5 : 0;
+            const endOffset = seg.endHalf ? -0.5 : 0;
+            const left = ((seg.sprintStart - minSprint) + startOffset) * colWidth;
+            const width = (seg.sprintEnd - seg.sprintStart + 1 + endOffset - startOffset) * colWidth;
+            if (width <= 0) return;
+            html += `<div class="item-bar-ghost" title="Posição na linha de base" style="left:${left}px; width:${width}px; top:${top}px;"></div>`;
+        });
+        return html;
+    }
+
     function buildItemBar(entry, laneOut, minSprint, ctx) {
         const item = entry.item;
         const track = entry.track;
@@ -284,7 +301,8 @@ const Renderer = (() => {
             ? `<div class="item-bar-progress" style="width:${item.progress}%;"></div>`
             : '';
 
-        let html = '';
+        const isNew = !!(ctx.baseline && ctx.baseline.addedIds.has(item.id));
+        let html = buildGhostBars(item, laneOut, track, minSprint, ctx);
         item.segments.forEach((seg, segIdx) => {
             const startOffset = seg.startHalf ? 0.5 : 0;
             const endOffset = seg.endHalf ? -0.5 : 0;
@@ -295,6 +313,7 @@ const Renderer = (() => {
             const top = Engine.barTopFor(laneOut, track);
 
             let barClass = 'item-bar';
+            if (isNew) barClass += ' is-new';
             if (item.intruder) barClass += ' intruder';
             if (item.highlight) barClass += ' highlight';
             else if (spotlightActive && !itemInCurrentSprint) barClass += ' dim';
@@ -318,6 +337,7 @@ const Renderer = (() => {
             html += `<div class="resize-handle resize-handle-left" data-item-id="${escapeAttr(item.id)}" data-segment-index="${segIdx}" data-side="left" role="button" aria-label="Redimensionar início"></div>`;
             html += healthHtml;
             html += memberAvatarHtml;
+            if (isNew && segIdx === 0) html += '<span class="item-new-badge" title="Adicionado depois da linha de base">Novo</span>';
             html += `<span class="item-title">${escapeHtml(item.title)}</span>`;
             html += statusHtml;
             if (ctx.showProgress && item.progress > 0) html += `<span class="item-progress-label">${item.progress}%</span>`;
@@ -456,7 +476,19 @@ const Renderer = (() => {
         if (subtitleEl) subtitleEl.textContent = config.squad;
 
         const statusTypes = State.getStatusTypes();
+        const activeBaseline = vs.activeBaselineId
+            ? (State.getBaselines ? State.getBaselines() : []).find(b => b.id === vs.activeBaselineId) : null;
+        let baselineCtx = null;
+        if (activeBaseline) {
+            const diff = Engine.diffAgainstBaseline(allItems, activeBaseline.items, statusTypes);
+            baselineCtx = {
+                byId: new Map(Engine.clampSegments(activeBaseline.items, sprints).map(i => [i.id, i])),
+                movedIds: new Set(diff.moved.map(m => m.item.id)),
+                addedIds: new Set(diff.added.map(i => i.id))
+            };
+        }
         const ctx = {
+            baseline: baselineCtx,
             colorBy: vs.colorBy,
             showProgress: vs.showProgress !== false,
             showDependencies: vs.showDependencies !== false,

@@ -134,9 +134,77 @@ const ConfigPanel = (() => {
 
         populateForm();
         renderTypeManagement();
+        renderBaselineSection();
         State.on('config:changed', populateForm);
         State.on('config:changed', () => {
             if (!_skipTypeRerender) renderTypeManagement();
+        });
+        // The change list depends on items (moves), baselines and the active one (view state).
+        State.on('state:changed', renderBaselineSection);
+        State.on('baselines:changed', renderBaselineSection);
+        State.on('view:changed', renderBaselineSection);
+    }
+
+    // ─── Linha de base / "o que mudou" ───────────────────
+    function renderBaselineSection() {
+        const container = document.getElementById('baseline-container');
+        if (!container) return;
+        const baselines = State.getBaselines();
+        const activeId = Views.getActiveBaselineId();
+        const active = baselines.find(b => b.id === activeId) || null;
+        const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('pt-BR'); };
+
+        let html = `
+            <div class="editor-divider"></div>
+            <div class="config-section-title">Linha de base <span class="form-hint">(congele o roadmap e veja o que mudou desde então)</span></div>
+            <div class="form-group">
+                <div style="display:flex; gap:6px;">
+                    <select id="baseline-select" style="flex:1; min-width:0;" aria-label="Linha de base ativa">
+                        <option value="" ${!active ? 'selected' : ''}>Nenhuma (sem comparação)</option>
+                        ${baselines.map(b => `<option value="${escapeAttr(b.id)}" ${b.id === activeId ? 'selected' : ''}>${escapeHtml(b.name)} — ${escapeHtml(fmtDate(b.createdAt))}</option>`).join('')}
+                    </select>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-baseline-save" title="Salvar o estado atual como linha de base">Salvar</button>
+                    <button type="button" class="btn btn-danger btn-sm" id="btn-baseline-delete" title="Excluir a linha de base selecionada" ${active ? '' : 'disabled'}>✕</button>
+                </div>
+            </div>`;
+
+        if (active) {
+            const diff = Engine.diffAgainstBaseline(State.getItems(), active.items, State.getStatusTypes());
+            const lanes = State.getLanes();
+            const laneName = id => { const l = lanes.find(x => x.id === id); return l ? l.name : 'Sem trilha'; };
+            const fmt = n => Number.isFinite(n) ? 'S' + Math.floor(n) + (n !== Math.floor(n) ? '½' : '') : '—';
+            const group = (title, cls, entries) => entries.length
+                ? `<div class="changes-group"><div class="changes-title ${cls}">${escapeHtml(title)} <span class="changes-count">${entries.length}</span></div><ul class="changes-list">${entries.map(e => `<li>${e}</li>`).join('')}</ul></div>`
+                : '';
+            const total = diff.added.length + diff.removed.length + diff.moved.length + diff.changedLane.length + diff.completed.length;
+            html += '<div class="changes">';
+            html += total
+                ? group('Adicionados', 'changes-added', diff.added.map(i => escapeHtml(i.title)))
+                    + group('Removidos', 'changes-removed', diff.removed.map(i => escapeHtml(i.title)))
+                    + group('Movidos', 'changes-moved', diff.moved.map(m => `${escapeHtml(m.item.title)} <span class="changes-detail">${fmt(m.from.start)}→${fmt(m.from.end)} ⇒ ${fmt(m.to.start)}→${fmt(m.to.end)}</span>`))
+                    + group('Mudaram de trilha', 'changes-lane', diff.changedLane.map(c => `${escapeHtml(c.item.title)} <span class="changes-detail">${escapeHtml(laneName(c.fromLaneId))} ⇒ ${escapeHtml(laneName(c.toLaneId))}</span>`))
+                    + group('Concluídos', 'changes-done', diff.completed.map(i => escapeHtml(i.title)))
+                : '<div class="no-items-msg" style="padding:6px 0;">Nenhuma mudança desde esta linha de base.</div>';
+            html += '<div class="changes-foot">Posições antigas aparecem como barras-fantasma na timeline; itens novos ganham a tag "Novo". A lista entra no HTML exportado.</div>';
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+
+        container.querySelector('#baseline-select').addEventListener('change', (e) => Views.setActiveBaselineId(e.target.value));
+        container.querySelector('#btn-baseline-save').addEventListener('click', () => {
+            const suggested = 'Revisão ' + new Date().toLocaleDateString('pt-BR');
+            const name = prompt('Nome da linha de base:', suggested);
+            if (name === null) return;
+            const id = State.saveBaseline(name);
+            Views.setActiveBaselineId(id);
+            if (typeof showToast === 'function') showToast('Linha de base salva', 'success');
+        });
+        const delBtn = container.querySelector('#btn-baseline-delete');
+        if (active) delBtn.addEventListener('click', () => {
+            if (!confirm(`Excluir a linha de base "${active.name}"?`)) return;
+            State.deleteBaseline(active.id);
+            Views.setActiveBaselineId('');
         });
     }
 

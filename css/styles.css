@@ -2240,3 +2240,80 @@ td.conf-low { color: var(--text-secondary); font-style: italic; }
         padding-right: 16px;
     }
 }
+
+/* ── Linha de base: barras-fantasma, tag "Novo", lista de mudanças ── */
+
+.item-bar-ghost {
+    position: absolute;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    border: 2px dashed rgba(148, 163, 184, 0.7);
+    background: repeating-linear-gradient(135deg, rgba(148, 163, 184, 0.12) 0 6px, transparent 6px 12px);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.item-new-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #0f172a;
+    flex-shrink: 0;
+}
+
+.changes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.changes-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.changes-count {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 9px;
+}
+
+.changes-added { color: #34d399; }
+.changes-removed { color: #f87171; }
+.changes-moved { color: #fbbf24; }
+.changes-lane { color: #a5b4fc; }
+.changes-done { color: var(--text-secondary); }
+
+.changes-list {
+    margin: 0 0 0 14px;
+    padding: 0;
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.changes-list li { margin: 2px 0; }
+
+.changes-detail {
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.changes-foot {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}

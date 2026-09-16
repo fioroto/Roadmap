@@ -403,6 +403,37 @@ const Engine = (() => {
         };
     }
 
+    // ─── Baseline diff ───────────────────────────────────
+    // "What changed since <baseline>": compares by item id. `moved` uses the
+    // effective range (first start / last end, half-sprint precision).
+    function diffAgainstBaseline(items, baselineItems, statusTypes) {
+        const now = new Map((items || []).map(i => [i.id, i]));
+        const then = new Map((baselineItems || []).map(i => [i.id, i]));
+        const out = { added: [], removed: [], moved: [], completed: [], changedLane: [], unchanged: 0 };
+
+        now.forEach((item, id) => {
+            const old = then.get(id);
+            if (!old) { out.added.push(item); return; }
+            let changed = false;
+            const from = itemRange(old), to = itemRange(item);
+            if (from.start !== to.start || from.end !== to.end) {
+                out.moved.push({ item, from, to });
+                changed = true;
+            }
+            if (isDone(item, statusTypes) && !isDone(old, statusTypes)) {
+                out.completed.push(item);
+                changed = true;
+            }
+            if ((old.laneId || '') !== (item.laneId || '')) {
+                out.changedLane.push({ item, fromLaneId: old.laneId || '', toLaneId: item.laneId || '' });
+                changed = true;
+            }
+            if (!changed) out.unchanged++;
+        });
+        then.forEach((old, id) => { if (!now.has(id)) out.removed.push(old); });
+        return out;
+    }
+
     return {
         ROW_H, BAR_OFFSET, BAR_H, LANE_HEADER_H, LANE_GAP, COLLAPSED_H, UNASSIGNED_LANE,
         calculateSprints, calculateMonthBands, allocateTracks, clampSegments, formatDateShort,
@@ -410,6 +441,7 @@ const Engine = (() => {
         filterItems, isFilterActive,
         computeLayout, laneAtY, barTopFor,
         computeDependencyEdges, hasDependencyConflict,
-        isDone, bucketNowNextLater, computeSummary
+        isDone, bucketNowNextLater, computeSummary,
+        diffAgainstBaseline
     };
 })();

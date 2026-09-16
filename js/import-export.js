@@ -92,7 +92,7 @@ const ImportExport = (() => {
     }
 
     function downloadJSON() {
-        const json = State.exportJSON();
+        const json = State.exportJSON({ includeBaselines: true });
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -252,6 +252,7 @@ const ImportExport = (() => {
             const dataUri = canvas.toDataURL('image/png');
 
             const config = State.getConfig();
+            const changesHtml = buildChangesHtml();
             const htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -278,12 +279,18 @@ const ImportExport = (() => {
             box-shadow: 0 4px 24px rgba(0,0,0,0.5);
         }
         .footer { margin-top: 16px; font-size: 11px; color: #64748b; }
+        .changes { width: 100%; max-width: 1100px; margin-top: 24px; font-size: 13px; }
+        .changes h2 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #cbd5e1; }
+        .changes h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin: 12px 0 4px; }
+        .changes ul { margin: 0 0 0 18px; padding: 0; color: #e2e8f0; }
+        .changes li { margin: 2px 0; }
     </style>
 </head>
 <body>
     <h1>ROADMAP ${escapeHtmlStr(config.periodo)}</h1>
     <div class="subtitle">${escapeHtmlStr(config.squad)}</div>
     <img class="roadmap-img" src="${dataUri}" alt="Roadmap ${escapeHtmlStr(config.periodo)}">
+${changesHtml}
     <div class="footer">Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</div>
 </body>
 </html>`;
@@ -300,6 +307,31 @@ const ImportExport = (() => {
         } catch (e) {
             showToast('Erro ao exportar HTML: ' + e.message, 'error');
         }
+    }
+
+    // "What changed since the active baseline" — appended to the exported HTML.
+    function buildChangesHtml() {
+        const baselineId = (typeof Views !== 'undefined' && Views.getActiveBaselineId) ? Views.getActiveBaselineId() : '';
+        const baseline = baselineId ? State.getBaselines().find(b => b.id === baselineId) : null;
+        if (!baseline) return '';
+        const diff = Engine.diffAgainstBaseline(State.getItems(), baseline.items, State.getStatusTypes());
+        const lanes = State.getLanes();
+        const laneName = id => { const l = lanes.find(x => x.id === id); return l ? l.name : 'Sem trilha'; };
+        const fmt = n => Number.isFinite(n) ? 'S' + Math.floor(n) + (n !== Math.floor(n) ? '½' : '') : '—';
+        const section = (title, entries) => entries.length
+            ? `<h3>${escapeHtmlStr(title)} (${entries.length})</h3><ul>${entries.map(e => `<li>${e}</li>`).join('')}</ul>` : '';
+        const when = new Date(baseline.createdAt);
+        let html = `<section class="changes"><h2>O que mudou desde “${escapeHtmlStr(baseline.name)}” (${escapeHtmlStr(isNaN(when) ? '' : when.toLocaleDateString('pt-BR'))})</h2>`;
+        html += section('Adicionados', diff.added.map(i => escapeHtmlStr(i.title)));
+        html += section('Removidos', diff.removed.map(i => escapeHtmlStr(i.title)));
+        html += section('Movidos', diff.moved.map(m => `${escapeHtmlStr(m.item.title)}: ${fmt(m.from.start)}→${fmt(m.from.end)} ⇒ ${fmt(m.to.start)}→${fmt(m.to.end)}`));
+        html += section('Mudaram de trilha', diff.changedLane.map(c => `${escapeHtmlStr(c.item.title)}: ${escapeHtmlStr(laneName(c.fromLaneId))} ⇒ ${escapeHtmlStr(laneName(c.toLaneId))}`));
+        html += section('Concluídos', diff.completed.map(i => escapeHtmlStr(i.title)));
+        if (!diff.added.length && !diff.removed.length && !diff.moved.length && !diff.changedLane.length && !diff.completed.length) {
+            html += '<p>Nenhuma mudança.</p>';
+        }
+        html += '</section>';
+        return html;
     }
 
     function escapeHtmlStr(str) {
