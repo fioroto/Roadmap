@@ -159,8 +159,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isEditable) return;
 
         if (e.key === 'Escape') {
+            // Leaving presentation mode takes precedence over deselecting.
+            if (Views.isPresentation()) { Views.setPresentation(false); return; }
             State.emit('item:select', null);
             return;
+        }
+
+        // View shortcuts: P = presentation, 1/2/3 = timeline / table / board.
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+            if (e.key === 'p' || e.key === 'P') { e.preventDefault(); Views.togglePresentation(); return; }
+            if (e.key === '1') { Views.setView('timeline'); return; }
+            if (e.key === '2') { Views.setView('table'); return; }
+            if (e.key === '3') { Views.setView('board'); return; }
         }
 
         if (e.key === 'Delete' || e.key === 'Backspace') {

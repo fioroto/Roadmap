@@ -21,6 +21,7 @@
             <div class="app-header-left">
                 <h1 id="roadmap-title" class="roadmap-title">ROADMAP Q1/2026</h1>
                 <span id="roadmap-subtitle" class="roadmap-subtitle">Squad Ativação</span>
+                <div id="roadmap-summary" class="roadmap-summary" aria-live="polite"></div>
             </div>
             <div id="roadmap-legend" class="roadmap-legend"></div>
             <button class="roadmap-add-btn" id="btn-roadmap-add" title="Adicionar item ao roadmap" aria-label="Adicionar item ao roadmap">+</button>
@@ -31,6 +32,8 @@
 
             <!-- Roadmap Area -->
             <div class="roadmap-wrapper">
+                <!-- Toolbar lives OUTSIDE #roadmap-container so PNG/HTML export never captures it. -->
+                <div id="roadmap-toolbar" class="roadmap-toolbar"></div>
                 <div id="roadmap-container" class="roadmap-container" tabindex="-1"></div>
             </div>
 
@@ -209,6 +212,13 @@
                                 <button class="btn btn-secondary btn-sm" id="btn-import-json">Importar JSON</button>
                                 <input type="file" id="file-json" accept=".json" style="display:none">
                             </div>
+                        </div>
+
+                        <!-- CSV de itens -->
+                        <div class="import-card">
+                            <div class="import-card-title">Exportar CSV de Itens</div>
+                            <div class="import-card-desc">Uma linha por segmento, com trilha, progresso, saúde, confiança, tamanho, dependências e links. Abre no Excel/Sheets e reimporta em "Carregar CSV → Itens".</div>
+                            <button class="btn btn-secondary btn-sm btn-block" id="btn-export-csv">Exportar CSV de itens</button>
                         </div>
 
                         <!-- File System API -->

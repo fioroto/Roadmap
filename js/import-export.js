@@ -11,6 +11,7 @@ const ImportExport = (() => {
         document.getElementById('file-csv').addEventListener('change', handleCSVUpload);
 
         document.getElementById('btn-export-html').addEventListener('click', exportHTMLWithPNG);
+        document.getElementById('btn-export-csv').addEventListener('click', downloadItemsCSV);
         document.getElementById('btn-export-png').addEventListener('click', exportPNGOnly);
 
         const shareBtn = document.getElementById('btn-share-link');
@@ -103,6 +104,18 @@ const ImportExport = (() => {
         showToast('JSON exportado com sucesso', 'success');
     }
 
+    function downloadItemsCSV() {
+        // BOM so Excel opens UTF-8 (accents) correctly.
+        const blob = new Blob(['\ufeff' + State.exportItemsCSV()], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = getExportFileName() + '-itens.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('CSV de itens exportado', 'success');
+    }
+
     function handleJSONUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -170,8 +183,10 @@ const ImportExport = (() => {
             getComputedStyle(document.body).getPropertyValue('background-color') + ';';
         document.body.appendChild(tempWrapper);
 
-        // Clone the header
+        // Clone the header (without the "+" action button — it's UI, not content)
         const headerClone = header.cloneNode(true);
+        const headerAddBtn = headerClone.querySelector('.roadmap-add-btn');
+        if (headerAddBtn) headerAddBtn.remove();
         headerClone.style.cssText = 'padding:16px 24px 12px;display:flex;align-items:center;justify-content:space-between;' +
             'border-bottom:1px solid ' + getComputedStyle(document.documentElement).getPropertyValue('--border-color') + ';' +
             'background:' + getComputedStyle(header).backgroundColor + ';';

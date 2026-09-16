@@ -420,6 +420,8 @@ const Renderer = (() => {
 
     function render() {
         if (!container) return;
+        // Non-timeline views own the container; the Views dispatcher calls us only for the timeline.
+        if (typeof Views !== 'undefined' && Views.getView && Views.getView() !== 'timeline') return;
         const config = State.getConfig();
         const allItems = State.getItems();
         const vs = viewState();
@@ -444,7 +446,7 @@ const Renderer = (() => {
 
         const wrapperEl = container.closest('.roadmap-wrapper');
         const panel = document.getElementById('side-panel');
-        const panelOpen = panel && !panel.classList.contains('collapsed');
+        const panelOpen = panel && !panel.classList.contains('collapsed') && !document.body.classList.contains('presentation');
         const availableWidth = wrapperEl.clientWidth - (panelOpen ? 380 : 0);
         colWidth = ZOOM_WIDTHS[vs.zoom] || Math.max(80, Math.floor(availableWidth / sprintCount));
 
