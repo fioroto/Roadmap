@@ -15,6 +15,7 @@
     "ConfigPanel": "readonly",
     "ItemEditor": "readonly",
     "ImportExport": "readonly",
+    "Views": "readonly",
     "html2canvas": "readonly",
     "showToast": "readonly"
   },
@@ -24,5 +25,11 @@
     "no-var": "error",
     "prefer-const": "warn",
     "eqeqeq": ["error", "smart"]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["test/**/*.js"],
+      "env": { "node": true }
+    }
+  ]
 }

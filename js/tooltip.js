@@ -20,11 +20,18 @@ const Tooltip = (() => {
 
         const teamMembers = State.getTeamMembers();
         const member = item.responsavel ? teamMembers.find(m => m.id === item.responsavel) : null;
+        const lane = item.laneId ? State.getLanes().find(l => l.id === item.laneId) : null;
+        const healthEntry = item.health ? State.getHealthTypes().find(h => h.value === item.health) : null;
+        const confidenceEntry = State.getConfidenceTypes().find(c => c.value === item.confidence);
+        const itemsById = new Map(State.getItems().map(i => [i.id, i]));
 
         let html = `<div class="tooltip-title">${escapeHtml(item.title)}</div>`;
 
         html += '<div class="tooltip-meta">';
         html += `<span class="tooltip-type-chip" style="background:${typeColor}">${escapeHtml(typeLabel)}</span>`;
+        if (lane) {
+            html += `<span class="tooltip-lane-chip"><span class="lane-color" style="background:${escapeAttr(lane.color)}"></span>${escapeHtml(lane.name)}</span>`;
+        }
         if (item.intruder) {
             html += '<span class="tooltip-intruder-badge">Intruder</span>';
         }
@@ -53,6 +60,32 @@ const Tooltip = (() => {
             html += '</span></div>';
         }
 
+        if (item.progress > 0) {
+            html += `<div class="tooltip-row"><span class="tooltip-label">Progresso</span><span class="tooltip-value"><span class="tooltip-progress"><span style="width:${item.progress}%"></span></span> ${item.progress}%</span></div>`;
+        }
+        if (healthEntry) {
+            html += `<div class="tooltip-row"><span class="tooltip-label">Saúde</span><span class="tooltip-value"><span class="health-dot health-${escapeAttr(item.health)}"></span> ${escapeHtml(healthEntry.label)}</span></div>`;
+        }
+        if (confidenceEntry && item.confidence !== 'high') {
+            html += `<div class="tooltip-row"><span class="tooltip-label">Confiança</span><span class="tooltip-value">${escapeHtml(confidenceEntry.label)}</span></div>`;
+        }
+        if (item.size) {
+            html += `<div class="tooltip-row"><span class="tooltip-label">Tamanho</span><span class="tooltip-value">${escapeHtml(item.size)}</span></div>`;
+        }
+        if (item.dependsOn && item.dependsOn.length) {
+            const names = item.dependsOn.map(id => itemsById.get(id)).filter(Boolean).map(d => escapeHtml(d.title));
+            if (names.length) {
+                const conflict = Engine.hasDependencyConflict(item, itemsById);
+                html += `<div class="tooltip-row"><span class="tooltip-label">Depende de</span><span class="tooltip-value">${names.join(', ')}${conflict ? ' <span class="tooltip-conflict">⚠ conflito</span>' : ''}</span></div>`;
+            }
+        }
+        if (item.links && item.links.length) {
+            html += `<div class="tooltip-row"><span class="tooltip-label">Links</span><span class="tooltip-value">${item.links.map(l => escapeHtml(l.label || l.url)).join(', ')}</span></div>`;
+        }
+
+        if (item.outcome) {
+            html += `<div class="tooltip-obs"><span class="tooltip-label">Resultado esperado</span><div class="tooltip-obs-text">${escapeHtml(item.outcome)}</div></div>`;
+        }
         if (item.observacao) {
             html += `<div class="tooltip-obs"><span class="tooltip-label">Observação</span><div class="tooltip-obs-text">${escapeHtml(item.observacao)}</div></div>`;
         }
@@ -92,6 +125,15 @@ const Tooltip = (() => {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+        return (str == null ? '' : String(str))
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     return { init, show, position, hide };

@@ -134,9 +134,77 @@ const ConfigPanel = (() => {
 
         populateForm();
         renderTypeManagement();
+        renderBaselineSection();
         State.on('config:changed', populateForm);
         State.on('config:changed', () => {
             if (!_skipTypeRerender) renderTypeManagement();
+        });
+        // The change list depends on items (moves), baselines and the active one (view state).
+        State.on('state:changed', renderBaselineSection);
+        State.on('baselines:changed', renderBaselineSection);
+        State.on('view:changed', renderBaselineSection);
+    }
+
+    // ─── Linha de base / "o que mudou" ───────────────────
+    function renderBaselineSection() {
+        const container = document.getElementById('baseline-container');
+        if (!container) return;
+        const baselines = State.getBaselines();
+        const activeId = Views.getActiveBaselineId();
+        const active = baselines.find(b => b.id === activeId) || null;
+        const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('pt-BR'); };
+
+        let html = `
+            <div class="editor-divider"></div>
+            <div class="config-section-title">Linha de base <span class="form-hint">(congele o roadmap e veja o que mudou desde então)</span></div>
+            <div class="form-group">
+                <div style="display:flex; gap:6px;">
+                    <select id="baseline-select" style="flex:1; min-width:0;" aria-label="Linha de base ativa">
+                        <option value="" ${!active ? 'selected' : ''}>Nenhuma (sem comparação)</option>
+                        ${baselines.map(b => `<option value="${escapeAttr(b.id)}" ${b.id === activeId ? 'selected' : ''}>${escapeHtml(b.name)} — ${escapeHtml(fmtDate(b.createdAt))}</option>`).join('')}
+                    </select>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-baseline-save" title="Salvar o estado atual como linha de base">Salvar</button>
+                    <button type="button" class="btn btn-danger btn-sm" id="btn-baseline-delete" title="Excluir a linha de base selecionada" ${active ? '' : 'disabled'}>✕</button>
+                </div>
+            </div>`;
+
+        if (active) {
+            const diff = Engine.diffAgainstBaseline(State.getItems(), active.items, State.getStatusTypes());
+            const lanes = State.getLanes();
+            const laneName = id => { const l = lanes.find(x => x.id === id); return l ? l.name : 'Sem trilha'; };
+            const fmt = n => Number.isFinite(n) ? 'S' + Math.floor(n) + (n !== Math.floor(n) ? '½' : '') : '—';
+            const group = (title, cls, entries) => entries.length
+                ? `<div class="changes-group"><div class="changes-title ${cls}">${escapeHtml(title)} <span class="changes-count">${entries.length}</span></div><ul class="changes-list">${entries.map(e => `<li>${e}</li>`).join('')}</ul></div>`
+                : '';
+            const total = diff.added.length + diff.removed.length + diff.moved.length + diff.changedLane.length + diff.completed.length;
+            html += '<div class="changes">';
+            html += total
+                ? group('Adicionados', 'changes-added', diff.added.map(i => escapeHtml(i.title)))
+                    + group('Removidos', 'changes-removed', diff.removed.map(i => escapeHtml(i.title)))
+                    + group('Movidos', 'changes-moved', diff.moved.map(m => `${escapeHtml(m.item.title)} <span class="changes-detail">${fmt(m.from.start)}→${fmt(m.from.end)} ⇒ ${fmt(m.to.start)}→${fmt(m.to.end)}</span>`))
+                    + group('Mudaram de trilha', 'changes-lane', diff.changedLane.map(c => `${escapeHtml(c.item.title)} <span class="changes-detail">${escapeHtml(laneName(c.fromLaneId))} ⇒ ${escapeHtml(laneName(c.toLaneId))}</span>`))
+                    + group('Concluídos', 'changes-done', diff.completed.map(i => escapeHtml(i.title)))
+                : '<div class="no-items-msg" style="padding:6px 0;">Nenhuma mudança desde esta linha de base.</div>';
+            html += '<div class="changes-foot">Posições antigas aparecem como barras-fantasma na timeline; itens novos ganham a tag "Novo". A lista entra no HTML exportado.</div>';
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+
+        container.querySelector('#baseline-select').addEventListener('change', (e) => Views.setActiveBaselineId(e.target.value));
+        container.querySelector('#btn-baseline-save').addEventListener('click', () => {
+            const suggested = 'Revisão ' + new Date().toLocaleDateString('pt-BR');
+            const name = prompt('Nome da linha de base:', suggested);
+            if (name === null) return;
+            const id = State.saveBaseline(name);
+            Views.setActiveBaselineId(id);
+            if (typeof showToast === 'function') showToast('Linha de base salva', 'success');
+        });
+        const delBtn = container.querySelector('#btn-baseline-delete');
+        if (active) delBtn.addEventListener('click', () => {
+            if (!confirm(`Excluir a linha de base "${active.name}"?`)) return;
+            State.deleteBaseline(active.id);
+            Views.setActiveBaselineId('');
         });
     }
 
@@ -242,7 +310,25 @@ const ConfigPanel = (() => {
         const itemTypes = State.getItemTypes();
         const statusTypes = State.getStatusTypes();
 
+        const lanes = State.getLanes();
+
         container.innerHTML = `
+            <div class="editor-divider"></div>
+            <div class="config-section-title">Trilhas <span class="form-hint">(tema, objetivo ou frente — viram faixas no roadmap)</span></div>
+            <div class="type-list" id="lanes-list">
+                ${lanes.map((l, i) => `
+                    <div class="type-row lane-row">
+                        <input type="color" class="lane-color-picker" value="${escapeAttr(l.color)}" data-id="${escapeAttr(l.id)}" style="width:32px;height:28px;padding:2px;border-radius:4px;cursor:pointer;flex-shrink:0;">
+                        <input type="text" class="lane-name-input" value="${escapeAttr(l.name)}" data-id="${escapeAttr(l.id)}" placeholder="Nome">
+                        <input type="text" class="lane-desc-input" value="${escapeAttr(l.description)}" data-id="${escapeAttr(l.id)}" placeholder="Objetivo / descrição">
+                        <button class="btn btn-secondary btn-sm lane-move-btn" data-id="${escapeAttr(l.id)}" data-dir="-1" title="Mover para cima" ${i === 0 ? 'disabled' : ''}>↑</button>
+                        <button class="btn btn-secondary btn-sm lane-move-btn" data-id="${escapeAttr(l.id)}" data-dir="1" title="Mover para baixo" ${i === lanes.length - 1 ? 'disabled' : ''}>↓</button>
+                        <button class="btn btn-danger btn-sm lane-delete-btn" data-id="${escapeAttr(l.id)}" title="Excluir trilha (itens ficam sem trilha)">✕</button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-secondary btn-sm btn-block" id="btn-add-lane">+ Trilha</button>
+
             <div class="editor-divider"></div>
             <div class="config-section-title">Tipos de Item</div>
             <div class="type-list" id="item-types-list">
@@ -263,6 +349,7 @@ const ConfigPanel = (() => {
                     <div class="type-row">
                         <input type="text" class="type-icon-input" value="${escapeAttr(s.icon)}" data-idx="${i}" data-kind="status" placeholder="ícone" style="width:42px;text-align:center;flex-shrink:0;">
                         <input type="text" class="type-label-input" value="${escapeAttr(s.label)}" data-idx="${i}" data-kind="status" placeholder="Rótulo">
+                        <label class="type-done-label" title="Itens neste status contam como concluídos"><input type="checkbox" class="type-done-input" data-idx="${i}" ${s.done ? 'checked' : ''} ${s.value === '' ? 'disabled' : ''}> conclui</label>
                         <button class="btn btn-danger btn-sm type-delete-btn" data-idx="${i}" data-kind="status" ${s.value === '' ? 'disabled' : ''}>✕</button>
                     </div>
                 `).join('')}
@@ -303,6 +390,59 @@ const ConfigPanel = (() => {
 
     function bindTypeManagementEvents(container, itemTypes, statusTypes) {
         const teamMembers = State.getTeamMembers();
+
+        // Lane events. Handlers read State.getLanes() at event time (never the
+        // array captured at bind time) so a debounced name edit followed by a
+        // color change doesn't write the stale name back.
+        container.querySelector('#btn-add-lane').addEventListener('click', () => {
+            State.addLane('Nova trilha');
+        });
+
+        container.querySelectorAll('.lane-name-input, .lane-desc-input').forEach(input => {
+            const field = input.classList.contains('lane-name-input') ? 'name' : 'description';
+            input.addEventListener('input', () => {
+                clearTimeout(typeDebounceTimer);
+                typeDebounceTimer = setTimeout(() => {
+                    _skipTypeRerender = true;
+                    State.updateLane(input.dataset.id, { [field]: input.value });
+                    _skipTypeRerender = false;
+                }, 300);
+            });
+        });
+
+        container.querySelectorAll('.lane-color-picker').forEach(picker => {
+            picker.addEventListener('input', () => {
+                _skipTypeRerender = true;
+                State.updateLane(picker.dataset.id, { color: picker.value });
+                _skipTypeRerender = false;
+            });
+            picker.addEventListener('change', () => renderTypeManagement());
+        });
+
+        container.querySelectorAll('.lane-move-btn').forEach(btn => {
+            btn.addEventListener('click', () => State.moveLane(btn.dataset.id, parseInt(btn.dataset.dir, 10)));
+        });
+
+        container.querySelectorAll('.lane-delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const lane = State.getLanes().find(l => l.id === btn.dataset.id);
+                if (!lane) return;
+                const count = State.getItems().filter(i => i.laneId === lane.id).length;
+                const msg = count
+                    ? `Excluir a trilha "${lane.name}"? ${count} ${count === 1 ? 'item ficará' : 'itens ficarão'} sem trilha.`
+                    : `Excluir a trilha "${lane.name}"?`;
+                if (confirm(msg)) State.deleteLane(lane.id);
+            });
+        });
+
+        container.querySelectorAll('.type-done-input').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const idx = parseInt(cb.dataset.idx, 10);
+                _skipTypeRerender = true;
+                State.setConfig({ statusTypes: State.getStatusTypes().map((s, i) => i === idx ? { ...s, done: cb.checked } : s) });
+                _skipTypeRerender = false;
+            });
+        });
 
         // Team member events
         container.querySelector('#btn-add-member').addEventListener('click', () => {
